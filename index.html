@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2F3E9E">
+<title>Agenda</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<style>
+/* Una sola pantalla: el texto compartido arriba, un botón grande para enviar. */
+:root{
+  --bg:#ECEFF3; --surface:#FFFFFF; --ink:#17212B; --muted:#5A6876; --line:#CED6DE;
+  --accent:#2F3E9E; --accent-ink:#FFFFFF; --ok:#1E7050; --ok-bg:#DDF1E7; --err:#B3261E; --err-bg:#FBE5E3;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --bg:#12171D; --surface:#1B222B; --ink:#E8EDF2; --muted:#9AA8B6; --line:#34404D;
+  --accent:#98A4FF; --accent-ink:#10163F; --ok:#6FCBA3; --ok-bg:#16302A; --err:#FF8A80; --err-bg:#3A1F1D; color-scheme:dark } }
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.45}
+main{max-width:560px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 18px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);display:flex;flex-direction:column;gap:14px;min-height:100vh}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{margin:0;font-size:1.35rem;font-weight:800;letter-spacing:-.01em}
+.link{background:none;border:0;color:var(--accent);font:inherit;font-size:.95rem;font-weight:600;padding:6px 0;cursor:pointer}
+label{font-weight:600;font-size:.95rem}
+textarea,input{width:100%;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+textarea{min-height:42vh;resize:vertical}
+.ayuda{color:var(--muted);font-size:.9rem;margin:0}
+.btn{border:0;border-radius:14px;padding:16px;font:inherit;font-size:1.1rem;font-weight:800;background:var(--accent);color:var(--accent-ink);cursor:pointer;width:100%}
+.btn[disabled]{opacity:.55}
+.btn.sec{background:var(--surface);color:var(--ink);border:1px solid var(--line);font-weight:700;font-size:1rem;padding:12px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#estado{border-radius:12px;padding:12px;font-weight:600}
+#estado.ok{background:var(--ok-bg);color:var(--ok)}
+#estado.err{background:var(--err-bg);color:var(--err)}
+.campo{display:flex;flex-direction:column;gap:6px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Enviar a la agenda</h1>
+    <button class="link" id="verAjustes" type="button">Ajustes</button>
+  </header>
+
+  <section id="envio">
+    <div class="campo">
+      <label for="texto">Tarea o mensaje</label>
+      <textarea id="texto" placeholder="Compartí un mensaje desde WhatsApp, pegalo acá o dictalo con el micrófono del teclado."></textarea>
+      <p class="ayuda">Se carga en la agenda en la próxima pasada (7:38 y 13:38).</p>
+    </div>
+  </section>
+
+  <div id="estado" role="status" aria-live="polite" hidden></div>
+  <button class="btn" id="enviar" type="button">Enviar a la agenda</button>
+  <button class="btn sec" id="reintentar" type="button" hidden></button>
+
+  <section id="ajustes" hidden>
+    <div class="campo">
+      <label for="url">Dirección del receptor (Apps Script)</label>
+      <input id="url" type="url" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec">
+    </div>
+    <div class="campo" style="margin-top:12px">
+      <label for="clave">Clave</label>
+      <input id="clave" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <div class="campo" style="margin-top:12px">
+      <label for="origen">Nombre de este celular</label>
+      <input id="origen" type="text" placeholder="WhatsApp laboral">
+      <p class="ayuda">Aparece en la tarea para saber de dónde vino.</p>
+    </div>
+    <button class="btn" id="guardar" type="button" style="margin-top:16px">Guardar ajustes</button>
+  </section>
+</main>
+
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  function leer(k, d){ try { var v = localStorage.getItem(k); return v === null ? d : v; } catch(e){ return d; } }
+  function escribir(k, v){ try { localStorage.setItem(k, v); } catch(e){} }
+  function pendientes(){ try { return JSON.parse(leer("agenda_pendientes", "[]")) || []; } catch(e){ return []; } }
+  function guardarPendientes(l){ escribir("agenda_pendientes", JSON.stringify(l)); }
+
+  var cfg = { url: leer("agenda_url", ""), clave: leer("agenda_clave", ""), origen: leer("agenda_origen", "WhatsApp laboral") };
+
+  function estado(txt, tipo){ var s = $("estado"); s.textContent = txt; s.className = tipo || ""; s.hidden = !txt; }
+  function mostrarAjustes(si){
+    $("ajustes").hidden = !si; $("envio").hidden = si; $("enviar").hidden = si;
+    $("verAjustes").textContent = si ? "Volver" : "Ajustes";
+    if (si){ $("url").value = cfg.url; $("clave").value = cfg.clave; $("origen").value = cfg.origen; }
+    actualizarPendientes();
+  }
+  function actualizarPendientes(){
+    var n = pendientes().length, b = $("reintentar");
+    b.hidden = !n || !$("ajustes").hidden;
+    b.textContent = n === 1 ? "Reenviar 1 mensaje pendiente" : "Reenviar " + n + " mensajes pendientes";
+  }
+
+  // Texto que llega desde "Compartir" de WhatsApp (?text=...)
+  var p = new URLSearchParams(location.search);
+  var compartido = [p.get("title"), p.get("text"), p.get("url")].filter(Boolean).join("\n").trim();
+  if (compartido){ $("texto").value = compartido; history.replaceState(null, "", location.pathname); }
+
+  function mandar(texto){
+    return fetch(cfg.url, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ clave: cfg.clave, texto: texto, origen: cfg.origen || "WhatsApp laboral" })
+    }).then(function(r){ return r.json(); });
+  }
+
+  var ocupado = false;
+  $("enviar").addEventListener("click", function(){
+    var texto = $("texto").value.trim();
+    if (!texto || ocupado) return;
+    if (!cfg.url || !cfg.clave){ estado("Falta configurar la app. Tocá Ajustes.", "err"); return; }
+    ocupado = true; $("enviar").disabled = true; estado("Enviando…");
+    mandar(texto).then(function(r){
+      if (r && r.ok){ $("texto").value = ""; estado("Enviado. Ya podés volver a WhatsApp.", "ok"); }
+      else if (r && r.error === "clave"){ estado("La clave no coincide. Revisala en Ajustes.", "err"); }
+      else { estado("El receptor no aceptó el mensaje. Probá de nuevo.", "err"); }
+    }, function(){
+      // Sin señal o el receptor no respondió: se guarda y se reintenta después.
+      var l = pendientes(); l.push(texto); guardarPendientes(l);
+      $("texto").value = "";
+      estado("Sin conexión. Quedó guardado en este celular y se reenvía cuando vuelva la señal.", "err");
+      actualizarPendientes();
+    }).then(function(){ ocupado = false; $("enviar").disabled = false; });
+  });
+
+  function reenviarPendientes(){
+    var l = pendientes();
+    if (!l.length || !cfg.url || !cfg.clave || ocupado) return;
+    ocupado = true; estado("Reenviando pendientes…");
+    var restantes = l.slice();
+    (function siguiente(){
+      if (!restantes.length){ guardarPendientes([]); estado("Pendientes enviados.", "ok"); ocupado = false; actualizarPendientes(); return; }
+      mandar(restantes[0]).then(function(r){
+        if (r && r.ok){ restantes.shift(); guardarPendientes(restantes); siguiente(); }
+        else { estado("No se pudieron reenviar los pendientes. Revisá los ajustes.", "err"); ocupado = false; actualizarPendientes(); }
+      }, function(){ estado("Todavía sin conexión. Los pendientes siguen guardados.", "err"); ocupado = false; actualizarPendientes(); });
+    })();
+  }
+  $("reintentar").addEventListener("click", reenviarPendientes);
+  window.addEventListener("online", reenviarPendientes);
+
+  $("verAjustes").addEventListener("click", function(){ mostrarAjustes($("ajustes").hidden); });
+  $("guardar").addEventListener("click", function(){
+    cfg.url = $("url").value.trim(); cfg.clave = $("clave").value.trim(); cfg.origen = $("origen").value.trim() || "WhatsApp laboral";
+    escribir("agenda_url", cfg.url); escribir("agenda_clave", cfg.clave); escribir("agenda_origen", cfg.origen);
+    mostrarAjustes(false); estado("Ajustes guardados.", "ok");
+  });
+
+  if (!cfg.url || !cfg.clave) { mostrarAjustes(true); estado("Primera vez: cargá la dirección del receptor y la clave.", ""); }
+  else { actualizarPendientes(); reenviarPendientes(); }
+
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
+})();
+</script>
+</body>
+</html>
