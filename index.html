@@ -49,7 +49,7 @@ textarea{min-height:42vh;resize:vertical}
   <section id="envio">
     <div class="campo">
       <label for="texto">Tarea o mensaje</label>
-      <textarea id="texto" placeholder="Compartí un mensaje desde WhatsApp, pegalo acá o dictalo con el micrófono del teclado."></textarea>
+      <textarea id="texto" placeholder="Copiá el mensaje en WhatsApp y tocá el botón de abajo. También podés escribir o dictar con el micrófono del teclado."></textarea>
       <p class="ayuda">Se carga en la agenda en la próxima pasada (7:38 y 13:38).</p>
     </div>
   </section>
@@ -103,6 +103,7 @@ textarea{min-height:42vh;resize:vertical}
   var p = new URLSearchParams(location.search);
   var compartido = [p.get("title"), p.get("text"), p.get("url")].filter(Boolean).join("\n").trim();
   if (compartido){ $("texto").value = compartido; history.replaceState(null, "", location.pathname); }
+  window.addEventListener("focus", function(){ if (typeof rotularBoton === "function") rotularBoton(); });
 
   function mandar(texto){
     return fetch(cfg.url, {
@@ -112,11 +113,35 @@ textarea{min-height:42vh;resize:vertical}
     }).then(function(r){ return r.json(); });
   }
 
+  // Con la caja vacía, el botón pega lo copiado en WhatsApp y lo envía en un solo toque.
+  var puedePegar = !!(navigator.clipboard && navigator.clipboard.readText);
+  function rotularBoton(){
+    $("enviar").textContent = (!$("texto").value.trim() && puedePegar) ? "Pegar y enviar a la agenda" : "Enviar a la agenda";
+  }
+  $("texto").addEventListener("input", rotularBoton);
+  rotularBoton();
+
   var ocupado = false;
   $("enviar").addEventListener("click", function(){
+    if (ocupado) return;
+    if (!cfg.url || !cfg.clave){ estado("Falta configurar la app. Tocá Ajustes.", "err"); return; }
+    if (!$("texto").value.trim()){
+      if (!puedePegar){ estado("Mantené apretada la caja, elegí Pegar y después Enviar.", "err"); return; }
+      navigator.clipboard.readText().then(function(t){
+        t = (t || "").trim();
+        if (!t){ estado("No hay nada copiado. En WhatsApp mantené apretado el mensaje y tocá Copiar.", "err"); return; }
+        $("texto").value = t; rotularBoton(); enviarTexto();
+      }, function(){
+        estado("El celular no dejó pegar automáticamente. Mantené apretada la caja, elegí Pegar y después Enviar.", "err");
+      });
+      return;
+    }
+    enviarTexto();
+  });
+
+  function enviarTexto(){
     var texto = $("texto").value.trim();
     if (!texto || ocupado) return;
-    if (!cfg.url || !cfg.clave){ estado("Falta configurar la app. Tocá Ajustes.", "err"); return; }
     ocupado = true; $("enviar").disabled = true; estado("Enviando…");
     mandar(texto).then(function(r){
       if (r && r.ok){ $("texto").value = ""; estado("Enviado. Ya podés volver a WhatsApp.", "ok"); }
@@ -128,8 +153,8 @@ textarea{min-height:42vh;resize:vertical}
       $("texto").value = "";
       estado("Sin conexión. Quedó guardado en este celular y se reenvía cuando vuelva la señal.", "err");
       actualizarPendientes();
-    }).then(function(){ ocupado = false; $("enviar").disabled = false; });
-  });
+    }).then(function(){ ocupado = false; $("enviar").disabled = false; rotularBoton(); });
+  }
 
   function reenviarPendientes(){
     var l = pendientes();
