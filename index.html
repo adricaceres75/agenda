@@ -5,10 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0E5E6F">
 <style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>Pendientes de Adrián</title>
+<title>Agenda personal · Adrián Cáceres</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.1 (página independiente, datos en planilla de Google; dictado por micrófono).
+/* Agenda v2.2 (página independiente, datos en planilla de Google; dictado por micrófono).
+   Layout v2.2: en PC, banda superior a lo ancho; columna izquierda fija con la carga, los contadores
+   y los filtros; a la derecha todo el ancho para las tareas. En el celular, todo en una columna.
    Layout v1.5: banda superior en degradado petróleo con el avance del día; debajo la captura,
    los contadores y las tareas en Columnas (por urgencia), Lista o Semana (lunes a domingo).
    Paleta: todo deriva del azul petróleo; rojo y ámbar quedan solo para atrasadas y hoy. */
@@ -43,7 +45,7 @@
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
-.wrap{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:20px 64px;display:flex;flex-direction:column;gap:20px}
+.wrap{max-width:1920px;margin:0 auto;padding-inline:clamp(16px,2vw,32px);padding-block:16px 64px;display:flex;flex-direction:column;gap:16px}
 h1{font-family:var(--display);font-weight:700;font-size:1.7rem;margin:0;letter-spacing:-.01em;text-wrap:balance}
 .fecha{color:var(--muted);font-size:.95rem;margin:2px 0 0}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -104,8 +106,7 @@ dialog h3{font-family:var(--display);margin:0;font-size:1.2rem}
 
 /* ---------- v1.3: tablero ---------- */
 .kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
-@media (max-width:760px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:420px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 .kpi{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;cursor:pointer;
   background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
 .kpi:hover{border-color:var(--muted)}
@@ -126,8 +127,8 @@ dialog h3{font-family:var(--display);margin:0;font-size:1.2rem}
 .modo button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .vistaTxt{font-size:.9rem;color:var(--muted)}
 .vistaTxt button{border:0;background:none;color:var(--accent);font-weight:700;cursor:pointer;padding:0 0 0 6px}
-@media (min-width:900px){
-  #lista.columnas{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));align-items:start;gap:14px!important}
+@container principal (min-width:560px){
+  #lista.columnas{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));align-items:start;gap:14px!important}
   #lista.columnas .grupo{background:var(--sunk);border-radius:14px;padding:10px}
   #lista.columnas .vacio{grid-column:1/-1}
 }
@@ -154,7 +155,8 @@ dialog h3{font-family:var(--display);margin:0;font-size:1.2rem}
 .bandeja .ayuda2{font-size:.82rem;color:var(--muted);margin:0}
 .bandeja .items{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px}
 .semGrid{display:flex;flex-direction:column;gap:8px}
-@media (min-width:900px){ .semGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:stretch} .dia{min-height:180px} }
+@container principal (min-width:600px){ .semGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch} .dia{min-height:150px} }
+@container principal (min-width:980px){ .semGrid{grid-template-columns:repeat(7,minmax(0,1fr))} .dia{min-height:200px} }
 .dia{background:var(--sunk);border:2px solid transparent;border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .dia.hoy{background:var(--today-bg);border-color:var(--today)}
 .dia.pasado .cab{opacity:.65}
@@ -227,7 +229,7 @@ h1,.grupo h2,.bandeja h3,.semNav h2,dialog h3{font-family:var(--display)}
 
 .grupo h2{font-weight:600;font-size:.8rem;letter-spacing:.14em;color:var(--accent)}
 .grupo h2 .cnt{font-family:var(--mono)}
-@media (min-width:900px){ #lista.columnas .grupo{background:linear-gradient(180deg,var(--sunk) 0%,transparent 100%);border:1px solid var(--line)} }
+@container principal (min-width:560px){ #lista.columnas .grupo{background:linear-gradient(180deg,var(--sunk) 0%,transparent 100%);border:1px solid var(--line)} }
 .tarea,.mini{position:relative;box-shadow:var(--shadow);transition:transform .15s,border-color .15s,box-shadow .15s}
 .tarea:hover{transform:translateY(-1px);border-color:var(--accent-2)}
 .meta,.mini .sub{font-family:var(--body)}
@@ -312,6 +314,54 @@ dialog h3{color:var(--accent)}
 .ondas i{display:block;width:3px;height:6px;border-radius:2px;background:currentColor;animation:onda2 .9s ease-in-out infinite}
 .ondas i:nth-child(2){animation-delay:.15s} .ondas i:nth-child(3){animation-delay:.3s} .ondas i:nth-child(4){animation-delay:.45s}
 @keyframes onda2{50%{height:16px}}
+/* ---------- v2.2: aprovechar el ancho ---------- */
+.subtitulo{margin:0;font-family:var(--display);font-weight:500;font-size:clamp(1rem,2vw,1.2rem);letter-spacing:.06em;color:var(--hero-muted)}
+.hero h1{margin:0;line-height:1.1}
+.hero .fecha{margin-top:2px}
+.acciones-carga{justify-content:flex-end}
+.lado,.principal{display:flex;flex-direction:column;gap:14px;min-width:0}
+.principal{container:principal / inline-size}
+.filtrosLado{display:flex;flex-direction:column;gap:10px}
+.filtrosLado #buscar{width:100%}
+.barra{display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;justify-content:flex-start}
+.vistaTxt{margin:0}
+#lista.columnas{gap:14px}
+
+#estado:empty{display:none}
+.captura{gap:10px}
+.mini .titulo,.tarea .titulo{overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto}
+.rapido{gap:5px}
+.rapido button{padding:2px 9px;font-size:.78rem}
+@container principal (min-width:560px){ #lista.columnas .rapido > span{display:none} }
+/* Celular: contadores en una tira que se desliza de costado */
+@media (max-width:640px){
+  .wrap{gap:12px;padding-block:10px 56px}
+  .hero{padding:14px 16px;border-radius:14px}
+  .avance{flex-basis:100%;max-width:none}
+  .kpis{display:flex;overflow-x:auto;gap:8px;margin-inline:-16px;padding:2px 16px 6px;scroll-snap-type:x mandatory;scroll-padding-inline:16px;scrollbar-width:none}
+  .kpis::-webkit-scrollbar{display:none}
+  .kpi{flex:0 0 132px;scroll-snap-align:start;padding:8px 10px}
+  .kpi .n{font-size:1.6rem}
+  .captura{padding:12px}
+  .captura textarea{min-height:92px}
+  .modo{width:100%}
+  .modo button{flex:1}
+}
+@media (min-width:641px) and (max-width:1099px){
+  .kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .filtrosLado{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  .filtrosLado #buscar{width:min(280px,100%)}
+}
+/* PC: dos columnas, la izquierda queda fija al bajar */
+@media (min-width:1100px){
+  .wrap{display:grid;grid-template-columns:clamp(300px,24vw,380px) minmax(0,1fr);gap:18px 22px;align-items:start}
+  .hero{grid-column:1/-1}
+  .lado{position:sticky;top:calc(12px + env(safe-area-inset-top,0px));max-height:calc(100vh - 24px);overflow:auto;padding:2px 4px 8px 2px;scrollbar-width:thin}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi:last-child{grid-column:1/-1}
+  .captura textarea{min-height:120px}
+}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -322,7 +372,8 @@ dialog h3{color:var(--accent)}
 <div class="wrap">
   <header class="hero">
     <div class="heroIzq">
-      <h1>Pendientes de Adrián</h1>
+      <h1>Adrián Cáceres</h1>
+      <p class="subtitulo">Agenda personal</p>
       <p class="fecha" id="hoyTxt"></p>
       <div class="sync cargando" id="sync"><span class="punto"></span><span id="syncTxt">Conectando…</span>
         <button type="button" id="btnRefrescar" aria-label="Actualizar ahora">Actualizar</button>
@@ -334,11 +385,11 @@ dialog h3{color:var(--accent)}
     </div>
   </header>
 
+  <aside class="lado">
   <section class="captura">
-    <label for="entrada">Anotá como te salga</label>
-    <textarea id="entrada" placeholder="Dictá con el micrófono del teclado o pegá un mensaje de WhatsApp o un mail. Ej.: «Llamar el jueves a la afiliada Gómez por el expediente del IPS, es urgente»"></textarea>
-    <div class="fila">
-      <span class="ayuda">Si pegás con la caja vacía, se agrega solo. Si pegás varios mensajes de WhatsApp juntos, se arma una tarea por mensaje. Área, prioridad y fecha se corrigen tocando la tarea.</span>
+    <label for="entrada">Tarea para agendar</label>
+    <textarea id="entrada" placeholder="Escribí, dictá o pegá un mensaje. Ej.: «Llamar el jueves a la afiliada Gómez por el expediente del IPS, es urgente»"></textarea>
+    <div class="fila acciones-carga">
       <span class="botones">
         <button class="mic" id="mic" type="button" aria-label="Dictar una tarea" title="Dictar (tocá, hablá y esperá un segundo)" hidden>
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8.5 21h7"/></svg>
@@ -352,23 +403,26 @@ dialog h3{color:var(--accent)}
 
   <section class="kpis" id="kpis" aria-label="Resumen de pendientes"></section>
 
-  <div class="barra">
+  <div class="filtrosLado">
     <div class="filtros" id="filtros" role="group" aria-label="Filtrar por área">
       <button class="chip" type="button" data-area="" aria-pressed="true">Todas</button>
       <button class="chip" type="button" data-area="sindical" aria-pressed="false">Sindical</button>
       <button class="chip" type="button" data-area="laboral" aria-pressed="false">Laboral</button>
       <button class="chip" type="button" data-area="personal" aria-pressed="false">Personal</button>
     </div>
-    <div class="der">
-      <input id="buscar" type="search" placeholder="Buscar (nombre, trámite…)" aria-label="Buscar tareas">
-      <div class="modo" role="group" aria-label="Cómo ver las tareas">
-        <button type="button" id="mCol" aria-pressed="true">Columnas</button>
-        <button type="button" id="mLis" aria-pressed="false">Lista</button>
-        <button type="button" id="mSem" aria-pressed="false">Semana</button>
-      </div>
-    </div>
+    <input id="buscar" type="search" placeholder="Buscar (nombre, trámite…)" aria-label="Buscar tareas">
   </div>
-  <div class="vistaTxt" id="vistaTxt" hidden></div>
+  </aside>
+
+  <div class="principal">
+  <div class="barra">
+    <div class="modo" role="group" aria-label="Cómo ver las tareas">
+      <button type="button" id="mCol" aria-pressed="true">Columnas</button>
+      <button type="button" id="mLis" aria-pressed="false">Lista</button>
+      <button type="button" id="mSem" aria-pressed="false">Semana</button>
+    </div>
+    <div class="vistaTxt" id="vistaTxt" hidden></div>
+  </div>
 
   <section class="bienvenida" id="bienvenida" hidden>
     <h2>Conectá este dispositivo con tu planilla</h2>
@@ -384,6 +438,7 @@ dialog h3{color:var(--accent)}
     <summary id="hechasSum">Hechas</summary>
     <div class="grupo" id="hechas"></div>
   </details>
+  </div>
 </div>
 
 <dialog id="dlg">
@@ -778,7 +833,7 @@ dialog h3{color:var(--accent)}
       // Fecha con un toque: lo que más cuesta al cargar es ponerle día.
       var r = el("div", "rapido");
       r.appendChild(el("span", "", t.vence ? "Pasar a:" : "Ponerle fecha:"));
-      [["Hoy", h], ["Mañana", masDias(1)], ["Lunes", proxLunes()], ["En 1 semana", masDias(7)]].forEach(function(o){
+      [["Hoy", h], ["Mañana", masDias(1)], ["Lunes", proxLunes()], ["+7 días", masDias(7)]].forEach(function(o){
         if(o[1] === t.vence) return;
         var b = el("button", "", o[0]); b.type = "button";
         b.setAttribute("aria-label", o[0] + ": " + t.titulo);
