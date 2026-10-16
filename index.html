@@ -8,7 +8,7 @@
 <title>Pendientes de Adrián</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.0 (página independiente, datos en planilla de Google).
+/* Agenda v2.1 (página independiente, datos en planilla de Google; dictado por micrófono).
    Layout v1.5: banda superior en degradado petróleo con el avance del día; debajo la captura,
    los contadores y las tareas en Columnas (por urgencia), Lista o Semana (lunes a domingo).
    Paleta: todo deriva del azul petróleo; rojo y ámbar quedan solo para atrasadas y hoy. */
@@ -297,6 +297,21 @@ dialog h3{color:var(--accent)}
 #dlgCx p{margin:0;color:var(--muted);font-size:.9rem}
 #cxEstado{font-size:.9rem;min-height:1.3em}
 #cxEstado.error{color:var(--late)} #cxEstado.ok{color:var(--ok)}
+/* ---------- v2.1: dictado ---------- */
+.botones{display:flex;gap:8px;align-items:center;flex:none}
+.mic{position:relative;width:46px;height:46px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent-3),var(--accent));color:var(--accent-ink);box-shadow:0 4px 14px var(--glow);
+  transition:transform .15s,filter .15s}
+.mic:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.mic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mic.oyendo{background:linear-gradient(135deg,#B42318,#E5533F);box-shadow:0 0 0 0 rgba(229,83,63,.5);animation:latido 1.3s ease-out infinite}
+@keyframes latido{0%{box-shadow:0 0 0 0 rgba(229,83,63,.55)}100%{box-shadow:0 0 0 16px rgba(229,83,63,0)}}
+.captura.oyendo textarea{border-color:#E5533F;box-shadow:0 0 0 4px rgba(229,83,63,.18)}
+.oyendoTxt{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--late);font-weight:600}
+.ondas{display:inline-flex;gap:3px;align-items:center;height:16px}
+.ondas i{display:block;width:3px;height:6px;border-radius:2px;background:currentColor;animation:onda2 .9s ease-in-out infinite}
+.ondas i:nth-child(2){animation-delay:.15s} .ondas i:nth-child(3){animation-delay:.3s} .ondas i:nth-child(4){animation-delay:.45s}
+@keyframes onda2{50%{height:16px}}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -324,8 +339,14 @@ dialog h3{color:var(--accent)}
     <textarea id="entrada" placeholder="Dictá con el micrófono del teclado o pegá un mensaje de WhatsApp o un mail. Ej.: «Llamar el jueves a la afiliada Gómez por el expediente del IPS, es urgente»"></textarea>
     <div class="fila">
       <span class="ayuda">Si pegás con la caja vacía, se agrega solo. Si pegás varios mensajes de WhatsApp juntos, se arma una tarea por mensaje. Área, prioridad y fecha se corrigen tocando la tarea.</span>
-      <button class="btn" id="agregar" type="button">Agregar</button>
+      <span class="botones">
+        <button class="mic" id="mic" type="button" aria-label="Dictar una tarea" title="Dictar (tocá, hablá y esperá un segundo)" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8.5 21h7"/></svg>
+        </button>
+        <button class="btn" id="agregar" type="button">Agregar</button>
+      </span>
     </div>
+    <div class="oyendoTxt" id="oyendoTxt" hidden><span class="ondas" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Escuchando… cuando termines de hablar, la tarea se agrega sola. Tocá el micrófono para terminar antes.</span></div>
     <div id="estado" role="status" aria-live="polite"></div>
   </section>
 
@@ -507,35 +528,113 @@ dialog h3{color:var(--accent)}
 
   /* ---------- Alta ---------- */
   var ocupado = false;
-  function agregar(){
+  function agregar(porVoz){
     var texto = $("entrada").value.trim();
     if(!texto || ocupado) return;
     if(!CX.url){ estado("Primero conectá este dispositivo con la planilla (botón Conexión).", true); return; }
     ocupado = true; $("agregar").disabled = true; estado("Ordenando…");
+    var creadas = [];
     interpretar(texto).then(function(lista){
       var ahora = new Date().toISOString();
       return lista.reduce(function(p, t){
         return p.then(function(){
-          t.origen = texto.slice(0,4000); t.hecha = false; t.creada = ahora; t.hechaEn = "";
-          return col.add(t);
+          t.origen = (porVoz === true ? "Dictado: " : "") + texto.slice(0,4000); t.hecha = false; t.creada = ahora; t.hechaEn = "";
+          return col.add(t).then(function(j){ (j.tareas || []).forEach(function(n){ creadas.push(n.id); }); });
         });
       }, Promise.resolve()).then(function(){ return lista; });
     }).then(function(lista){
       $("entrada").value = "";
-      estado(lista.length === 1
+      var msg = lista.length === 1
         ? "Agregada: " + lista[0].titulo + (lista[0].vence ? " · " + fechaCorta(lista[0].vence) : " · sin fecha")
-        : lista.length + " tareas agregadas");
+        : lista.length + " tareas agregadas";
+      estado(msg);
+      if(porVoz === true){
+        // Si el dictado salió mal, se puede deshacer y el texto vuelve a la caja para corregirlo.
+        aviso(msg, function(){
+          creadas.forEach(function(id){ col.doc(id).delete().catch(function(){}); });
+          $("entrada").value = texto; $("entrada").focus();
+          estado("Deshecho. El texto quedó en la caja para corregirlo.");
+        });
+      }
     }, function(e){
       estado((e && e.message ? e.message + " " : "") + "Tu texto sigue en la caja.", true);
     }).then(function(){ ocupado = false; $("agregar").disabled = false; });
   }
-  $("agregar").addEventListener("click", agregar);
+  $("agregar").addEventListener("click", function(){ agregar(false); });
   // Pegar en la caja vacía agrega directo: copiar en WhatsApp, pegar acá, listo.
   $("entrada").addEventListener("paste", function(){
     if($("entrada").value.trim()) return;
-    setTimeout(function(){ if($("entrada").value.trim().length > 8) agregar(); }, 50);
+    setTimeout(function(){ if($("entrada").value.trim().length > 8) agregar(false); }, 50);
   });
-  $("entrada").addEventListener("keydown", function(e){ if(e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); agregar(); } });
+  $("entrada").addEventListener("keydown", function(e){ if(e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); agregar(false); } });
+
+  /* ---------- Dictado por micrófono ---------- */
+  // Usa el reconocimiento de voz del navegador (Chrome y Edge). En Firefox no existe: el botón no aparece.
+  (function(){
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return;
+    var ANDROID = /Android/i.test(navigator.userAgent);
+    var PAUSA = 2200;          // milisegundos de silencio para dar el dictado por terminado
+    var rec = null, oyendo = false, base = "", final = "", silencio = null, cancelado = false, huboVoz = false;
+    $("mic").hidden = false;
+
+    function pintar(on){
+      oyendo = on;
+      $("mic").classList.toggle("oyendo", on);
+      $("mic").setAttribute("aria-label", on ? "Terminar de dictar" : "Dictar una tarea");
+      $("oyendoTxt").hidden = !on;
+      document.querySelector(".captura").classList.toggle("oyendo", on);
+    }
+    function terminar(){ clearTimeout(silencio); if(rec){ try { rec.stop(); } catch(e){} } }
+    function armarSilencio(){ clearTimeout(silencio); silencio = setTimeout(terminar, PAUSA); }
+
+    function empezar(){
+      if(!CX.url){ estado("Primero conectá este dispositivo con la planilla (botón Conexión).", true); return; }
+      if(ocupado) return;
+      rec = new SR();
+      rec.lang = "es-AR";
+      rec.interimResults = true;
+      rec.continuous = !ANDROID;   // en Android el modo continuo repite frases: se usa una sola frase
+      rec.maxAlternatives = 1;
+      base = $("entrada").value.trim(); final = ""; cancelado = false; huboVoz = false;
+
+      rec.onstart = function(){ pintar(true); estado(""); armarSilencio(); };
+      rec.onresult = function(ev){
+        var provisorio = "";
+        for(var i = ev.resultIndex; i < ev.results.length; i++){
+          var tx = ev.results[i][0].transcript;
+          if(ev.results[i].isFinal) final += (final ? " " : "") + tx.trim();
+          else provisorio += tx;
+        }
+        huboVoz = true;
+        $("entrada").value = [base, final, provisorio.trim()].filter(String).join(base || final ? " " : "");
+        armarSilencio();
+      };
+      rec.onerror = function(ev){
+        var c = ev.error;
+        if(c === "aborted") return;
+        cancelado = c !== "no-speech";
+        estado(c === "not-allowed" || c === "service-not-allowed"
+          ? "El navegador no tiene permiso para usar el micrófono. Tocá el candado al lado de la dirección y permití el micrófono."
+          : c === "audio-capture" ? "No se encontró un micrófono. Revisá que esté conectado."
+          : c === "network" ? "El dictado necesita internet. Revisá la conexión."
+          : c === "no-speech" ? "No escuché nada. Tocá el micrófono y probá de nuevo."
+          : "No se pudo usar el micrófono (" + c + ").", true);
+      };
+      rec.onend = function(){
+        clearTimeout(silencio); pintar(false); rec = null;
+        var texto = $("entrada").value.trim();
+        if(!cancelado && huboVoz && texto && texto !== base) agregar(true);
+      };
+      try { rec.start(); } catch(e){ estado("No se pudo iniciar el dictado. Probá de nuevo.", true); }
+    }
+
+    $("mic").addEventListener("click", function(){ if(oyendo) terminar(); else empezar(); });
+    // Esc corta el dictado sin agregar: el texto queda en la caja para revisarlo.
+    document.addEventListener("keydown", function(e){
+      if(e.key === "Escape" && oyendo){ cancelado = true; terminar(); estado("Dictado cortado. El texto quedó en la caja: revisalo y tocá Agregar."); }
+    });
+  })();
 
   /* ---------- Tablero y lista ---------- */
   var vista = "", busca = "", modo = "columnas";
