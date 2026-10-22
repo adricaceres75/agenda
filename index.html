@@ -8,7 +8,9 @@
 <title>Agenda personal · Adrián Cáceres</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.3: la pantalla de inicio es la Cronología (una tarjeta por tarea, en orden de fecha,
+/* Agenda v2.4: «Laboral» pasa a llamarse «sabelotodo» (en la planilla sigue guardado como "laboral")
+   y cada tarjeta tiene fondo por área: sindical azul claro, sabelotodo rojo claro, personal verde claro.
+   Agenda v2.3: la pantalla de inicio es la Cronología (una tarjeta por tarea, en orden de fecha,
    con cortes por semana o por mes) y toda tarea nueva se guarda con fecha.
    Agenda v2.2 (página independiente, datos en planilla de Google; dictado por micrófono).
    Layout v2.2: en PC, banda superior a lo ancho; columna izquierda fija con la carga, los contadores
@@ -20,7 +22,8 @@
   --bg:#E4EEF0; --bg2:#D2E3E7; --surface:#FFFFFF; --sunk:#DAE8EB; --ink:#0A252E; --muted:#4C6871; --line:#BCD2D7;
   --accent:#0E5E6F; --accent-2:#178A9B; --accent-3:#0A3A47; --accent-ink:#FFFFFF; --glow:rgba(23,138,155,.28);
   --hero-1:#072F3A; --hero-2:#0E5E6F; --hero-3:#1C8E9C; --hero-ink:#F2FBFC; --hero-muted:#B5DCE2;
-  --sindical:#0E6E80; --laboral:#956600; --personal:#2B7B4E;
+  --sindical:#1F5FA8; --laboral:#B3263E; --personal:#2B7B4E;
+  --f-sindical:#E3EFFB; --f-laboral:#FCE5E7; --f-personal:#E4F4E7;
   --late:#B42318; --late-bg:#FCE6E2; --today:#8A5A00; --today-bg:#FAEFD3;
   --ok:#11856A; --ok-2:#3FB58F;
   --shadow:0 1px 2px rgba(7,47,58,.08),0 6px 18px rgba(7,47,58,.08);
@@ -32,7 +35,8 @@
   --bg:#05171D; --bg2:#082833; --surface:#0B2630; --sunk:#0F323D; --ink:#DCF0F3; --muted:#8DAEB6; --line:#1C4652;
   --accent:#4CC3D3; --accent-2:#86E2EC; --accent-3:#2A9AAB; --accent-ink:#022129; --glow:rgba(76,195,211,.30);
   --hero-1:#041E26; --hero-2:#0A4553; --hero-3:#127483; --hero-ink:#ECFAFC; --hero-muted:#9FCFD7;
-  --sindical:#5FCFDD; --laboral:#E8B65C; --personal:#72D19E;
+  --sindical:#7DB4F0; --laboral:#F28B9B; --personal:#72D19E;
+  --f-sindical:#11283F; --f-laboral:#3A1820; --f-personal:#12301F;
   --late:#FF8D80; --late-bg:#3A1917; --today:#EEBE5E; --today-bg:#33280E;
   --ok:#47D3A6; --ok-2:#8BEBCB;
   --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.30); color-scheme:dark } }
@@ -40,7 +44,8 @@
   --bg:#05171D; --bg2:#082833; --surface:#0B2630; --sunk:#0F323D; --ink:#DCF0F3; --muted:#8DAEB6; --line:#1C4652;
   --accent:#4CC3D3; --accent-2:#86E2EC; --accent-3:#2A9AAB; --accent-ink:#022129; --glow:rgba(76,195,211,.30);
   --hero-1:#041E26; --hero-2:#0A4553; --hero-3:#127483; --hero-ink:#ECFAFC; --hero-muted:#9FCFD7;
-  --sindical:#5FCFDD; --laboral:#E8B65C; --personal:#72D19E;
+  --sindical:#7DB4F0; --laboral:#F28B9B; --personal:#72D19E;
+  --f-sindical:#11283F; --f-laboral:#3A1820; --f-personal:#12301F;
   --late:#FF8D80; --late-bg:#3A1917; --today:#EEBE5E; --today-bg:#33280E;
   --ok:#47D3A6; --ok-2:#8BEBCB;
   --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.30); color-scheme:dark }
@@ -418,6 +423,20 @@ dialog h3{color:var(--accent)}
 #pfLista{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow:auto}
 #pfEstado{color:var(--late);font-size:.9rem;min-height:1.2em}
 
+
+/* ---------- v2.4: color de fondo por área ---------- */
+/* Sindical azul claro, sabelotodo (valor "laboral" en la planilla) rojo claro, Personal verde claro.
+   Las atrasadas y las de hoy ya no cambian el fondo: se marcan con un borde grueso y la fecha en color. */
+.tarea.sindical,.mini.sindical,.card.sindical{background:var(--f-sindical)}
+.tarea.laboral,.mini.laboral,.card.laboral{background:var(--f-laboral)}
+.tarea.personal,.mini.personal,.card.personal{background:var(--f-personal)}
+.card.late{border:2px solid var(--late);border-top:6px solid var(--late)}
+.card.today{border:2px solid var(--today);border-top:6px solid var(--today)}
+.card.late .cuando{background:var(--late);color:#fff;border-radius:6px;padding:1px 6px;justify-self:start;align-self:flex-start}
+.card .rapido{border-top-color:rgba(0,0,0,.12)}
+.card .rapido button,.tarea .rapido button{background:rgba(255,255,255,.75)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .card .rapido button{background:rgba(0,0,0,.25)} }
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -463,7 +482,7 @@ dialog h3{color:var(--accent)}
     <div class="filtros" id="filtros" role="group" aria-label="Filtrar por área">
       <button class="chip" type="button" data-area="" aria-pressed="true">Todas</button>
       <button class="chip" type="button" data-area="sindical" aria-pressed="false">Sindical</button>
-      <button class="chip" type="button" data-area="laboral" aria-pressed="false">Laboral</button>
+      <button class="chip" type="button" data-area="laboral" aria-pressed="false">sabelotodo</button>
       <button class="chip" type="button" data-area="personal" aria-pressed="false">Personal</button>
     </div>
     <input id="buscar" type="search" placeholder="Buscar (nombre, trámite…)" aria-label="Buscar tareas">
@@ -508,7 +527,7 @@ dialog h3{color:var(--accent)}
     <label class="campo"><span>Tarea</span><input id="eTitulo" required maxlength="200"></label>
     <div class="fila">
       <label class="campo"><span>Área</span>
-        <select id="eArea"><option value="sindical">Sindical</option><option value="laboral">Laboral</option><option value="personal">Personal</option></select></label>
+        <select id="eArea"><option value="sindical">Sindical</option><option value="laboral">sabelotodo</option><option value="personal">Personal</option></select></label>
       <label class="campo"><span>Prioridad</span>
         <select id="ePrio"><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select></label>
     </div>
@@ -559,7 +578,7 @@ dialog h3{color:var(--accent)}
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var AREAS = {sindical:"Sindical", laboral:"Laboral", personal:"Personal"};
+  var AREAS = {sindical:"Sindical", laboral:"sabelotodo", personal:"Personal"};
   var PRIO = {alta:0, media:1, baja:2};
   var db = null, col = null, sample = null, tareas = [], filtro = "", editId = null, cargado = false;
 
@@ -622,7 +641,7 @@ dialog h3{color:var(--accent)}
     titulo = titulo.charAt(0).toUpperCase() + titulo.slice(1);
     if(titulo.length > 140) titulo = titulo.slice(0,137) + "…";
     var area = /\b(personal|casa|familia|medico|turno medico|cumple|cumpleanos|auto|seguro|banco personal|river)\b/.test(n) ? "personal"
-      : /\b(taller|cliente|presupuesto|factura)\b/.test(n) ? "laboral" : "sindical";
+      : /\b(sabelotodo|taller|cliente|presupuesto|factura)\b/.test(n) ? "laboral" : "sindical";
     var notas = lineas.length > 1 || lineas[0].length > 140 ? texto.trim() : "";
     if(quien) notas = ("Pedido por " + quien + (notas ? "\n" + notas : "")).trim();
     return limpiar({
@@ -931,7 +950,7 @@ dialog h3{color:var(--accent)}
 
   function fila(t){
     var h = hoy();
-    var li = el("div", "tarea" + (t.hecha ? " hecha" : "") + (t.prioridad === "alta" && !t.hecha ? " prio-alta" : "") + (recientes[t.id] ? " nueva" : ""));
+    var li = el("div", "tarea " + t.area + (t.hecha ? " hecha" : "") + (t.prioridad === "alta" && !t.hecha ? " prio-alta" : "") + (recientes[t.id] ? " nueva" : ""));
     var chk = el("button", "check"); chk.type = "button"; armarCheck(chk);
     chk.setAttribute("aria-label", (t.hecha ? "Reabrir: " : "Marcar como hecha: ") + t.titulo);
     chk.addEventListener("click", function(){ completar(t, chk.parentNode, chk); });
