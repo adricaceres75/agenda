@@ -8,7 +8,9 @@
 <title>Agenda personal · Adrián Cáceres</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.2 (página independiente, datos en planilla de Google; dictado por micrófono).
+/* Agenda v2.3: la pantalla de inicio es la Cronología (una tarjeta por tarea, en orden de fecha,
+   con cortes por semana o por mes) y toda tarea nueva se guarda con fecha.
+   Agenda v2.2 (página independiente, datos en planilla de Google; dictado por micrófono).
    Layout v2.2: en PC, banda superior a lo ancho; columna izquierda fija con la carga, los contadores
    y los filtros; a la derecha todo el ancho para las tareas. En el celular, todo en una columna.
    Layout v1.5: banda superior en degradado petróleo con el avance del día; debajo la captura,
@@ -362,6 +364,60 @@ dialog h3{color:var(--accent)}
   .captura textarea{min-height:120px}
 }
 
+/* ---------- v2.3: cronología (pantalla de inicio) ---------- */
+/* Una tarjeta por tarea, en orden de fecha y una al lado de la otra. Los cortes de semana o mes
+   son una tarjeta más dentro de la grilla, así no quedan huecos en blanco. */
+.crono{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,232px),1fr));gap:10px;align-items:stretch}
+.sep{position:relative;overflow:hidden;border-radius:14px;padding:12px 14px;min-height:118px;display:flex;flex-direction:column;justify-content:space-between;gap:6px;
+  color:var(--hero-ink);background:linear-gradient(135deg,var(--hero-1) 0%,var(--hero-2) 70%,var(--hero-3) 100%);box-shadow:var(--shadow)}
+.sep::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.14;
+  background-image:linear-gradient(rgba(255,255,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.6) 1px,transparent 1px);background-size:22px 22px}
+.sep > *{position:relative}
+.sep .k{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--hero-muted)}
+.sep .t{font-family:var(--display);font-weight:700;font-size:1.25rem;line-height:1.15;text-wrap:balance}
+.sep .c{font-family:var(--mono);font-size:.82rem;color:var(--hero-muted)}
+.sep .c b{font-size:1.5rem;color:var(--hero-ink);margin-right:4px}
+.sep.late{background:linear-gradient(135deg,#7A140C 0%,#B42318 60%,#E5533F 100%)}
+.sep.late .k,.sep.late .c{color:#FFD9D3}
+.sep.today{background:linear-gradient(135deg,#6B4500 0%,#8A5A00 55%,#C88A12 100%)}
+.sep.today .k,.sep.today .c{color:#FFEBC2}
+.sep.nodate{background:var(--surface);color:var(--ink);border:2px dashed var(--late);box-shadow:none}
+.sep.nodate::before{display:none}
+.sep.nodate .k,.sep.nodate .c{color:var(--late)} .sep.nodate .c b{color:var(--late)}
+@media (max-width:640px){ .sep{min-height:0;flex-direction:row;align-items:center;flex-wrap:wrap;padding:10px 14px} .sep .t{font-size:1.05rem;flex:1 1 auto} }
+
+.card{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 10px;align-content:start;
+  background:var(--surface);border:1px solid var(--line);border-top:5px solid var(--muted);border-radius:14px;padding:10px 12px 11px;
+  box-shadow:var(--shadow);transition:transform .15s,border-color .15s,box-shadow .15s;min-width:0}
+.card:hover{transform:translateY(-2px);box-shadow:0 0 0 3px var(--glow),var(--shadow)}
+.card.sindical{border-top-color:var(--sindical)} .card.laboral{border-top-color:var(--laboral)} .card.personal{border-top-color:var(--personal)}
+.card.late{background:linear-gradient(170deg,var(--late-bg) 0%,var(--surface) 130%);border-color:var(--late);border-top-color:var(--late)}
+.card.today{background:linear-gradient(170deg,var(--today-bg) 0%,var(--surface) 130%)}
+.card.nodate{border-style:dashed;border-top-style:solid}
+.card .cuerpo{gap:4px}
+.card .cuando{font-family:var(--mono);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)}
+.card.late .cuando{color:var(--late)} .card.today .cuando{color:var(--today)} .card.nodate .cuando{color:var(--late)}
+.card .titulo{font-size:1rem;line-height:1.3}
+.card .meta{font-size:.8rem;gap:4px 10px}
+.card .notas{font-size:.82rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .rapido{grid-column:1/-1;border-top:1px dashed var(--line);padding-top:7px}
+.card .rapido > span{display:none}
+.card .rapido{gap:4px;flex-wrap:wrap}
+.card .rapido button{padding:2px 8px;font-size:.74rem;white-space:nowrap}
+.card.prio-alta{box-shadow:inset 4px 0 0 var(--late),var(--shadow)}
+
+/* Diálogo: toda tarea nueva lleva fecha */
+#dlgFecha p{margin:0;color:var(--muted);font-size:.92rem}
+.pf{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg)}
+.pf b{font-weight:600;overflow-wrap:anywhere}
+.pf .opc{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pf .opc button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-family:var(--display);font-weight:600;font-size:.86rem;cursor:pointer;color:var(--ink)}
+.pf .opc button[aria-pressed="true"]{background:linear-gradient(135deg,var(--accent-3),var(--accent));color:var(--accent-ink);border-color:transparent}
+.pf .opc input{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:5px 8px}
+.pf.falta{border-color:var(--late);box-shadow:0 0 0 3px var(--late-bg)}
+#pfLista{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow:auto}
+#pfEstado{color:var(--late);font-size:.9rem;min-height:1.2em}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -417,9 +473,14 @@ dialog h3{color:var(--accent)}
   <div class="principal">
   <div class="barra">
     <div class="modo" role="group" aria-label="Cómo ver las tareas">
-      <button type="button" id="mCol" aria-pressed="true">Columnas</button>
+      <button type="button" id="mCro" aria-pressed="true">Cronología</button>
+      <button type="button" id="mCol" aria-pressed="false">Columnas</button>
       <button type="button" id="mLis" aria-pressed="false">Lista</button>
       <button type="button" id="mSem" aria-pressed="false">Semana</button>
+    </div>
+    <div class="modo" id="cortes" role="group" aria-label="Separar la cronología por">
+      <button type="button" data-corte="semana" aria-pressed="true">Por semana</button>
+      <button type="button" data-corte="mes" aria-pressed="false">Por mes</button>
     </div>
     <div class="vistaTxt" id="vistaTxt" hidden></div>
   </div>
@@ -452,7 +513,7 @@ dialog h3{color:var(--accent)}
         <select id="ePrio"><option value="alta">Alta</option><option value="media">Media</option><option value="baja">Baja</option></select></label>
     </div>
     <div class="fila">
-      <label class="campo"><span>Vence</span><input id="eVence" type="date"></label>
+      <label class="campo"><span>Vence</span><input id="eVence" type="date" required></label>
       <label class="campo"><span>Hora</span><input id="eHora" type="time"></label>
     </div>
     <label class="campo"><span>Notas</span><textarea id="eNotas" rows="3"></textarea></label>
@@ -462,6 +523,18 @@ dialog h3{color:var(--accent)}
         <button class="btn sec" type="button" id="eCancelar">Cancelar</button>
         <button class="btn" type="submit">Guardar</button>
       </span>
+    </div>
+  </form>
+</dialog>
+<dialog id="dlgFecha">
+  <form id="frmFecha">
+    <h3>¿Para cuándo?</h3>
+    <p id="pfIntro">No encontré una fecha en lo que cargaste. Elegí un día para cada tarea antes de guardarla.</p>
+    <div id="pfLista"></div>
+    <div id="pfEstado" role="status" aria-live="polite"></div>
+    <div class="acciones">
+      <button class="btn sec" type="button" id="pfCancelar">Cancelar</button>
+      <button class="btn" type="submit">Guardar</button>
     </div>
   </form>
 </dialog>
@@ -589,7 +662,8 @@ dialog h3{color:var(--accent)}
     if(!CX.url){ estado("Primero conectá este dispositivo con la planilla (botón Conexión).", true); return; }
     ocupado = true; $("agregar").disabled = true; estado("Ordenando…");
     var creadas = [];
-    interpretar(texto).then(function(lista){
+    interpretar(texto).then(pedirFechas).then(function(lista){
+      estado("Guardando…");
       var ahora = new Date().toISOString();
       return lista.reduce(function(p, t){
         return p.then(function(){
@@ -612,9 +686,59 @@ dialog h3{color:var(--accent)}
         });
       }
     }, function(e){
+      if(e && e.cancelado){ estado("No se agregó nada. Tu texto sigue en la caja."); return; }
       estado((e && e.message ? e.message + " " : "") + "Tu texto sigue en la caja.", true);
     }).then(function(){ ocupado = false; $("agregar").disabled = false; });
   }
+
+  /* ---------- Fecha obligatoria al cargar ---------- */
+  // Si el texto no trae fecha, se pide antes de guardar: ninguna tarea nueva queda "sin fecha".
+  var dlgF = $("dlgFecha"), pfResolver = null, pfRechazar = null, pfFaltan = [];
+  function pedirFechas(lista){
+    pfFaltan = lista.filter(function(t){ return !t.vence; });
+    if(!pfFaltan.length) return lista;
+    return new Promise(function(ok, no){
+      pfResolver = function(){ ok(lista); }; pfRechazar = function(){ no({cancelado:true}); };
+      $("pfIntro").textContent = pfFaltan.length === 1
+        ? "No encontré una fecha en lo que cargaste. Elegí el día antes de guardarla."
+        : "Estas " + pfFaltan.length + " tareas no traen fecha. Elegí un día para cada una antes de guardarlas.";
+      $("pfEstado").textContent = "";
+      estado("Elegí la fecha para guardar.");
+      var L = $("pfLista"); L.textContent = "";
+      pfFaltan.forEach(function(t){
+        var box = el("div", "pf"); box.appendChild(el("b", "", t.titulo));
+        var opc = el("div", "opc");
+        var inp = el("input"); inp.type = "date"; inp.setAttribute("aria-label", "Fecha para: " + t.titulo);
+        var botones = [];
+        [["Hoy", hoy()], ["Mañana", masDias(1)], ["Lunes", proxLunes()], ["+7 días", masDias(7)]].forEach(function(o){
+          var b = el("button", "", o[0]); b.type = "button"; b.setAttribute("aria-pressed", "false");
+          b.addEventListener("click", function(){ inp.value = o[1]; marcar(); });
+          botones.push([b, o[1]]); opc.appendChild(b);
+        });
+        function marcar(){
+          botones.forEach(function(x){ x[0].setAttribute("aria-pressed", x[1] === inp.value ? "true" : "false"); });
+          box.classList.remove("falta");
+        }
+        inp.addEventListener("input", marcar);
+        opc.appendChild(inp); box.appendChild(opc); L.appendChild(box);
+        box._t = t; box._inp = inp;
+      });
+      if(dlgF.showModal) dlgF.showModal(); else dlgF.setAttribute("open", "");
+      var primero = L.querySelector(".opc button"); if(primero) primero.focus();
+    });
+  }
+  function cerrarF(){ if(dlgF.close) dlgF.close(); else dlgF.removeAttribute("open"); }
+  $("frmFecha").addEventListener("submit", function(e){
+    e.preventDefault();
+    var cajas = Array.prototype.slice.call($("pfLista").children), faltan = 0;
+    cajas.forEach(function(c){ if(!/^\d{4}-\d{2}-\d{2}$/.test(c._inp.value)){ faltan++; c.classList.add("falta"); } });
+    if(faltan){ $("pfEstado").textContent = faltan === 1 ? "Falta elegir la fecha de una tarea." : "Faltan elegir " + faltan + " fechas."; return; }
+    cajas.forEach(function(c){ c._t.vence = c._inp.value; });
+    var r = pfResolver; pfResolver = pfRechazar = null; cerrarF(); if(r) r();
+  });
+  function cancelarF(){ var r = pfRechazar; pfResolver = pfRechazar = null; cerrarF(); if(r) r(); }
+  $("pfCancelar").addEventListener("click", cancelarF);
+  dlgF.addEventListener("cancel", function(e){ e.preventDefault(); cancelarF(); });
   $("agregar").addEventListener("click", function(){ agregar(false); });
   // Pegar en la caja vacía agrega directo: copiar en WhatsApp, pegar acá, listo.
   $("entrada").addEventListener("paste", function(){
@@ -692,8 +816,9 @@ dialog h3{color:var(--accent)}
   })();
 
   /* ---------- Tablero y lista ---------- */
-  var vista = "", busca = "", modo = "columnas";
-  try { modo = localStorage.getItem("modo") || "columnas"; } catch(e){}
+  // La cronología es la pantalla de inicio: siempre abre ahí. Las otras vistas quedan a un toque.
+  var vista = "", busca = "", modo = "crono", corte = "semana";
+  try { corte = localStorage.getItem("corte") === "mes" ? "mes" : "semana"; } catch(e){}
   function diasEntre(a, b){ // a y b en AAAA-MM-DD
     var pa = a.split("-"), pb = b.split("-");
     return Math.round((new Date(+pb[0],+pb[1]-1,+pb[2]) - new Date(+pa[0],+pa[1]-1,+pa[2])) / 864e5);
@@ -946,7 +1071,8 @@ dialog h3{color:var(--accent)}
       }
       lista.appendChild(v);
     }
-    if(modo !== "semana") G.forEach(function(g){
+    if(modo === "crono" && cargado && vis.length) renderCrono(lista, vis);
+    if(modo === "columnas" || modo === "lista") G.forEach(function(g){
       var its = vis.filter(g.f); if(!its.length) return;
       var sec = el("section", "grupo " + g.c);
       var h2 = el("h2", "", g.t + " · "); h2.appendChild(el("span", "cnt", String(its.length)));
@@ -965,7 +1091,7 @@ dialog h3{color:var(--accent)}
   }
   $("kpis").addEventListener("click", function(e){
     var b = e.target.closest(".kpi"); if(!b) return;
-    if(modo === "semana"){ vista = b.dataset.vista; ponerModo("columnas"); return; }
+    if(modo === "semana"){ vista = b.dataset.vista; ponerModo("crono"); return; }
     vista = vista === b.dataset.vista ? "" : b.dataset.vista; render();
   });
   $("filtros").addEventListener("click", function(e){
@@ -975,19 +1101,109 @@ dialog h3{color:var(--accent)}
     render();
   });
   $("buscar").addEventListener("input", function(){ busca = sinAcentos(this.value.trim()); render(); });
-  function ponerModo(m){
-    modo = m; try { localStorage.setItem("modo", m); } catch(e){}
-    $("mCol").setAttribute("aria-pressed", m === "columnas" ? "true" : "false");
-    $("mLis").setAttribute("aria-pressed", m === "lista" ? "true" : "false");
-    $("mSem").setAttribute("aria-pressed", m === "semana" ? "true" : "false");
-    render();
+  var BOTON_MODO = {crono:"mCro", columnas:"mCol", lista:"mLis", semana:"mSem"};
+  function pintarModo(){
+    Object.keys(BOTON_MODO).forEach(function(k){ $(BOTON_MODO[k]).setAttribute("aria-pressed", modo === k ? "true" : "false"); });
+    $("cortes").hidden = modo !== "crono";
+    Array.prototype.forEach.call($("cortes").children, function(b){ b.setAttribute("aria-pressed", b.dataset.corte === corte ? "true" : "false"); });
   }
-  $("mCol").addEventListener("click", function(){ ponerModo("columnas"); });
-  $("mLis").addEventListener("click", function(){ ponerModo("lista"); });
-  $("mSem").addEventListener("click", function(){ ponerModo("semana"); });
-  $("mCol").setAttribute("aria-pressed", modo === "columnas" ? "true" : "false");
-  $("mLis").setAttribute("aria-pressed", modo === "lista" ? "true" : "false");
-  $("mSem").setAttribute("aria-pressed", modo === "semana" ? "true" : "false");
+  function ponerModo(m){ modo = m; pintarModo(); render(); }
+  Object.keys(BOTON_MODO).forEach(function(k){ $(BOTON_MODO[k]).addEventListener("click", function(){ ponerModo(k); }); });
+  $("cortes").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(!b) return;
+    corte = b.dataset.corte; try { localStorage.setItem("corte", corte); } catch(x){}
+    pintarModo(); render();
+  });
+  pintarModo();
+
+  /* ---------- Cronología ---------- */
+  var DIAS_CORTOS = ["dom","lun","mar","mié","jue","vie","sáb"];
+  function fechaDe(s){ var p = s.split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+  function ddmm(d){ return d.getDate() + "/" + (d.getMonth()+1); }
+  function lunesIso(s){ var d = fechaDe(s); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return iso(d); }
+  function nombreMes(s){ var t = fechaDe(s).toLocaleDateString("es-AR", {month:"long", year:"numeric"}); return t.charAt(0).toUpperCase() + t.slice(1).replace(" de ", " "); }
+  function separador(cls, k, t, n, extra){
+    var s = el("div", "sep " + (cls || "")); s.setAttribute("role", "heading"); s.setAttribute("aria-level", "2");
+    s.appendChild(el("span", "k", k));
+    s.appendChild(el("span", "t", t));
+    var c = el("span", "c"); c.appendChild(el("b", "", String(n)));
+    c.appendChild(document.createTextNode((n === 1 ? "tarea" : "tareas") + (extra ? " · " + extra : "")));
+    s.appendChild(c);
+    return s;
+  }
+  function tarjeta(t, h){
+    var clase = !t.vence ? "nodate" : t.vence < h ? "late" : t.vence === h ? "today" : "";
+    var d = el("div", "card " + t.area + " " + clase + (t.prioridad === "alta" ? " prio-alta" : "") + (recientes[t.id] ? " nueva" : ""));
+    var chk = el("button", "check"); chk.type = "button"; armarCheck(chk);
+    chk.setAttribute("aria-label", "Marcar como hecha: " + t.titulo);
+    chk.addEventListener("click", function(){ completar(t, d, chk); });
+    var c = el("button", "cuerpo"); c.type = "button"; c.title = "Abrir para editar";
+    var cuando;
+    if(!t.vence) cuando = "Sin fecha · elegí un día";
+    else {
+      var f = fechaDe(t.vence);
+      cuando = (t.vence === h ? "Hoy" : t.vence === masDias(1) ? "Mañana" : DIAS_CORTOS[f.getDay()]) + " " + ddmm(f) + (t.hora ? " · " + t.hora : "");
+      if(t.vence < h){ var n = diasEntre(t.vence, h); cuando += " · hace " + n + (n === 1 ? " día" : " días"); }
+    }
+    c.appendChild(el("span", "cuando", cuando));
+    c.appendChild(el("span", "titulo", t.titulo));
+    var meta = el("span", "meta");
+    meta.appendChild(el("span", "area " + t.area, AREAS[t.area] || t.area));
+    if(t.prioridad === "alta") meta.appendChild(el("span", "alta", "Prioridad alta"));
+    if(String(t.id).indexOf("mail-") === 0) meta.appendChild(el("span", "etq", "desde mail"));
+    c.appendChild(meta);
+    if(t.notas) c.appendChild(el("span", "notas", t.notas));
+    c.addEventListener("click", function(){ abrir(t); });
+    d.appendChild(chk); d.appendChild(c);
+    var r = el("div", "rapido");
+    [["Hoy", h], ["Mañana", masDias(1)], ["Lunes", proxLunes()], ["+7 días", masDias(7)]].forEach(function(o){
+      if(o[1] === t.vence) return;
+      var b = el("button", "", o[0]); b.type = "button";
+      b.setAttribute("aria-label", "Pasar a " + o[0] + ": " + t.titulo);
+      b.addEventListener("click", function(){ moverA(t, o[1], b); });
+      r.appendChild(b);
+    });
+    d.appendChild(r);
+    return d;
+  }
+  function renderCrono(lista, vis){
+    var h = hoy(), g = el("div", "crono");
+    var atr = vis.filter(function(t){ return t.vence && t.vence < h; });
+    var sinF = vis.filter(function(t){ return !t.vence; });
+    var deHoy = vis.filter(function(t){ return t.vence === h; });
+    var futuras = vis.filter(function(t){ return t.vence > h; });
+    function bloque(sep, its){ if(!its.length) return; g.appendChild(sep); its.forEach(function(t){ g.appendChild(tarjeta(t, h)); }); }
+
+    if(atr.length){
+      var vieja = diasEntre(atr[0].vence, h);
+      bloque(separador("late", "Atención", "Atrasadas", atr.length, "la más vieja, hace " + vieja + (vieja === 1 ? " día" : " días")), atr);
+    }
+    bloque(separador("nodate", "Falta fecha", "Sin fecha", sinF.length, "ponéles día"), sinF);
+    var hd = fechaDe(h);
+    bloque(separador("today", DIAS_CORTOS[hd.getDay()] + " " + ddmm(hd), "Hoy", deHoy.length, ""), deHoy);
+
+    // Lo que viene, cortado por semana (de lunes a domingo) o por mes.
+    var lunHoy = lunesIso(h), lunProx = iso(lunesDe(1)), mesHoy = h.slice(0, 7);
+    var grupos = [], actual = null;
+    futuras.forEach(function(t){
+      var clave = corte === "mes" ? t.vence.slice(0, 7) : lunesIso(t.vence);
+      if(!actual || actual.clave !== clave){ actual = {clave: clave, its: []}; grupos.push(actual); }
+      actual.its.push(t);
+    });
+    grupos.forEach(function(gr){
+      var k, t;
+      if(corte === "mes"){
+        k = gr.clave === mesHoy ? "Resto del mes" : "Mes";
+        t = nombreMes(gr.clave + "-01");
+      } else {
+        var l = fechaDe(gr.clave), dom = new Date(l); dom.setDate(l.getDate() + 6);
+        k = gr.clave === lunHoy ? "Resto de esta semana" : gr.clave === lunProx ? "Semana que viene" : "Semana";
+        t = "Del " + ddmm(l) + " al " + ddmm(dom);
+      }
+      bloque(separador("", k, t, gr.its.length, ""), gr.its);
+    });
+    lista.appendChild(g);
+  }
 
 
   /* ---------- Completar con animación ---------- */
