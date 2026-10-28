@@ -8,7 +8,8 @@
 <title>Agenda personal · Adrián Cáceres</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.4: «Laboral» pasa a llamarse «sabelotodo» (en la planilla sigue guardado como "laboral")
+/* Agenda v2.5: al tocar Agregar se elige, para cada tarea, fecha, rubro (Sindical, Sabelotodo, Personal) y prioridad.
+   Agenda v2.4: «Laboral» pasa a llamarse «sabelotodo» (en la planilla sigue guardado como "laboral")
    y cada tarjeta tiene fondo por área: sindical azul claro, sabelotodo rojo claro, personal verde claro.
    Agenda v2.3: la pantalla de inicio es la Cronología (una tarjeta por tarea, en orden de fecha,
    con cortes por semana o por mes) y toda tarea nueva se guarda con fecha.
@@ -420,7 +421,16 @@ dialog h3{color:var(--accent)}
 .pf .opc button[aria-pressed="true"]{background:linear-gradient(135deg,var(--accent-3),var(--accent));color:var(--accent-ink);border-color:transparent}
 .pf .opc input{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:5px 8px}
 .pf.falta{border-color:var(--late);box-shadow:0 0 0 3px var(--late-bg)}
-#pfLista{display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow:auto}
+#pfLista{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto}
+/* v2.5: al cargar se elige fecha, rubro y prioridad */
+.pf .fl{display:grid;grid-template-columns:76px minmax(0,1fr);gap:6px 8px;align-items:center}
+.pf .fl > span{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:var(--display)}
+.pf .opc button.a-sindical[aria-pressed="true"]{background:var(--sindical);color:#fff}
+.pf .opc button.a-laboral[aria-pressed="true"]{background:var(--laboral);color:#fff}
+.pf .opc button.a-personal[aria-pressed="true"]{background:var(--personal);color:#fff}
+.pf .opc button.p-alta[aria-pressed="true"]{background:var(--late);color:#fff}
+.pf.sindical{background:var(--f-sindical)} .pf.laboral{background:var(--f-laboral)} .pf.personal{background:var(--f-personal)}
+@media (max-width:480px){ .pf .fl{grid-template-columns:1fr} }
 #pfEstado{color:var(--late);font-size:.9rem;min-height:1.2em}
 
 
@@ -547,8 +557,8 @@ dialog h3{color:var(--accent)}
 </dialog>
 <dialog id="dlgFecha">
   <form id="frmFecha">
-    <h3>¿Para cuándo?</h3>
-    <p id="pfIntro">No encontré una fecha en lo que cargaste. Elegí un día para cada tarea antes de guardarla.</p>
+    <h3 id="pfTitulo">Antes de guardar</h3>
+    <p id="pfIntro">Revisá la fecha, el rubro y la prioridad.</p>
     <div id="pfLista"></div>
     <div id="pfEstado" role="status" aria-live="polite"></div>
     <div class="acciones">
@@ -710,27 +720,43 @@ dialog h3{color:var(--accent)}
     }).then(function(){ ocupado = false; $("agregar").disabled = false; });
   }
 
-  /* ---------- Fecha obligatoria al cargar ---------- */
-  // Si el texto no trae fecha, se pide antes de guardar: ninguna tarea nueva queda "sin fecha".
-  var dlgF = $("dlgFecha"), pfResolver = null, pfRechazar = null, pfFaltan = [];
+  /* ---------- Al cargar: fecha, rubro y prioridad (v2.5) ---------- */
+  // Antes de guardar se muestra cada tarea con lo que se detectó en el texto, para confirmarlo o cambiarlo.
+  // La fecha sigue siendo obligatoria: ninguna tarea nueva queda "sin fecha".
+  var dlgF = $("dlgFecha"), pfResolver = null, pfRechazar = null;
+  function grupoOpc(box, etiqueta, opciones, valor, alElegir){
+    var fl = el("div", "fl"); fl.appendChild(el("span", "", etiqueta));
+    var opc = el("div", "opc"); opc.setAttribute("role", "group"); opc.setAttribute("aria-label", etiqueta);
+    var bs = [];
+    opciones.forEach(function(o){
+      var b = el("button", o[2] || "", o[0]); b.type = "button";
+      b.addEventListener("click", function(){ valor = o[1]; pintar(); alElegir(o[1]); });
+      bs.push([b, o[1]]); opc.appendChild(b);
+    });
+    function pintar(){ bs.forEach(function(x){ x[0].setAttribute("aria-pressed", x[1] === valor ? "true" : "false"); }); }
+    pintar(); fl.appendChild(opc); box.appendChild(fl);
+    return opc;
+  }
   function pedirFechas(lista){
-    pfFaltan = lista.filter(function(t){ return !t.vence; });
-    if(!pfFaltan.length) return lista;
     return new Promise(function(ok, no){
       pfResolver = function(){ ok(lista); }; pfRechazar = function(){ no({cancelado:true}); };
-      $("pfIntro").textContent = pfFaltan.length === 1
-        ? "No encontré una fecha en lo que cargaste. Elegí el día antes de guardarla."
-        : "Estas " + pfFaltan.length + " tareas no traen fecha. Elegí un día para cada una antes de guardarlas.";
+      var sinFecha = lista.filter(function(t){ return !t.vence; }).length;
+      $("pfTitulo").textContent = lista.length === 1 ? "Antes de guardar" : "Antes de guardar las " + lista.length + " tareas";
+      $("pfIntro").textContent = (lista.length === 1 ? "Elegí la fecha, el rubro y la prioridad." : "Elegí la fecha, el rubro y la prioridad de cada una.")
+        + (sinFecha ? (sinFecha === 1 && lista.length === 1 ? " No encontré una fecha en el texto." : " " + sinFecha + " no traen fecha.") : "");
       $("pfEstado").textContent = "";
-      estado("Elegí la fecha para guardar.");
+      estado("Elegí fecha, rubro y prioridad para guardar.");
       var L = $("pfLista"); L.textContent = "";
-      pfFaltan.forEach(function(t){
-        var box = el("div", "pf"); box.appendChild(el("b", "", t.titulo));
+      lista.forEach(function(t){
+        var box = el("div", "pf " + t.area); box.appendChild(el("b", "", t.titulo));
+        box._t = t;
+        // Fecha
+        var fl = el("div", "fl"); fl.appendChild(el("span", "", "Fecha"));
         var opc = el("div", "opc");
-        var inp = el("input"); inp.type = "date"; inp.setAttribute("aria-label", "Fecha para: " + t.titulo);
+        var inp = el("input"); inp.type = "date"; inp.value = t.vence || ""; inp.setAttribute("aria-label", "Fecha para: " + t.titulo);
         var botones = [];
         [["Hoy", hoy()], ["Mañana", masDias(1)], ["Lunes", proxLunes()], ["+7 días", masDias(7)]].forEach(function(o){
-          var b = el("button", "", o[0]); b.type = "button"; b.setAttribute("aria-pressed", "false");
+          var b = el("button", "", o[0]); b.type = "button";
           b.addEventListener("click", function(){ inp.value = o[1]; marcar(); });
           botones.push([b, o[1]]); opc.appendChild(b);
         });
@@ -739,18 +765,26 @@ dialog h3{color:var(--accent)}
           box.classList.remove("falta");
         }
         inp.addEventListener("input", marcar);
-        opc.appendChild(inp); box.appendChild(opc); L.appendChild(box);
-        box._t = t; box._inp = inp;
+        opc.appendChild(inp); fl.appendChild(opc); box.appendChild(fl); marcar();
+        box._inp = inp;
+        // Rubro
+        grupoOpc(box, "Rubro", [["Sindical","sindical","a-sindical"], [AREAS.laboral.charAt(0).toUpperCase() + AREAS.laboral.slice(1),"laboral","a-laboral"], ["Personal","personal","a-personal"]],
+          t.area, function(v){ t.area = v; box.className = "pf " + v; });
+        // Prioridad
+        grupoOpc(box, "Prioridad", [["Alta","alta","p-alta"], ["Media","media"], ["Baja","baja"]],
+          t.prioridad, function(v){ t.prioridad = v; });
+        L.appendChild(box);
       });
       if(dlgF.showModal) dlgF.showModal(); else dlgF.setAttribute("open", "");
-      var primero = L.querySelector(".opc button"); if(primero) primero.focus();
+      var foco = L.querySelector(".opc button[aria-pressed='true']") || L.querySelector(".opc button");
+      if(foco) foco.focus();
     });
   }
   function cerrarF(){ if(dlgF.close) dlgF.close(); else dlgF.removeAttribute("open"); }
   $("frmFecha").addEventListener("submit", function(e){
     e.preventDefault();
     var cajas = Array.prototype.slice.call($("pfLista").children), faltan = 0;
-    cajas.forEach(function(c){ if(!/^\d{4}-\d{2}-\d{2}$/.test(c._inp.value)){ faltan++; c.classList.add("falta"); } });
+    cajas.forEach(function(c){ if(!/^\d{4}-\d{2}-\d{2}$/.test(c._inp.value)){ faltan++; c.classList.add("falta"); } else c.classList.remove("falta"); });
     if(faltan){ $("pfEstado").textContent = faltan === 1 ? "Falta elegir la fecha de una tarea." : "Faltan elegir " + faltan + " fechas."; return; }
     cajas.forEach(function(c){ c._t.vence = c._inp.value; });
     var r = pfResolver; pfResolver = pfRechazar = null; cerrarF(); if(r) r();
