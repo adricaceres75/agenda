@@ -8,7 +8,10 @@
 <title>Agenda personal · Adrián Cáceres</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.5: al tocar Agregar se elige, para cada tarea, fecha, rubro (Sindical, Sabelotodo, Personal) y prioridad.
+/* Agenda v2.6: pedidos de Sabelotodo. Pantalla «Pedidos» con una columna por etapa, ficha de cada pedido
+   (catálogo con escalas de precio, descuento o precio a mano, etapas con fecha, facturas y cobros), alertas
+   arriba de todo, entregas en la Cronología, pedido rápido por dictado, «Pasar a pedido» y montos ocultos.
+   Agenda v2.5: al tocar Agregar se elige, para cada tarea, fecha, rubro (Sindical, Sabelotodo, Personal) y prioridad.
    Agenda v2.4: «Laboral» pasa a llamarse «sabelotodo» (en la planilla sigue guardado como "laboral")
    y cada tarjeta tiene fondo por área: sindical azul claro, sabelotodo rojo claro, personal verde claro.
    Agenda v2.3: la pantalla de inicio es la Cronología (una tarjeta por tarea, en orden de fecha,
@@ -447,6 +450,138 @@ dialog h3{color:var(--accent)}
 .card .rapido button,.tarea .rapido button{background:rgba(255,255,255,.75)}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .card .rapido button{background:rgba(0,0,0,.25)} }
 
+/* ---------- v2.6: pedidos Sabelotodo ---------- */
+/* Pantalla aparte con una columna por etapa, ficha de cada pedido (precio del catálogo, etapas con fecha,
+   facturas y cobros), alertas arriba de todo, entregas en la Cronología y montos ocultos con el ojo. */
+:root{ --sab:#B3263E; --sab-2:#D9485F; --sab-bg:#FCE5E7; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --sab:#F28B9B; --sab-2:#F6A9B5; --sab-bg:#3A1820; } }
+.modo button#mPed{color:var(--sab)}
+.modo button#mPed[aria-pressed="true"]{background:linear-gradient(135deg,#7A1426,var(--sab) 60%,var(--sab-2));color:#fff}
+
+/* Alertas */
+.alertas{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--sab);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px}
+.alertas h2{margin:0;font-family:var(--display);font-size:.82rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--sab);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.alertas h2 .cnt{font-family:var(--mono)}
+.alerta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-radius:10px;padding:6px 8px;background:var(--sunk)}
+.alerta.late{background:var(--late-bg)} .alerta.today{background:var(--today-bg)}
+.alerta .que{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:1px;background:none;border:0;padding:0;text-align:left;cursor:pointer;color:inherit}
+.alerta .que b{font-weight:700;overflow-wrap:anywhere}
+.alerta .que span{font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
+.alerta.late .que b{color:var(--late)} .alerta.today .que b{color:var(--today)}
+.alerta .acc{display:flex;gap:6px;flex-wrap:wrap}
+.mini-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 11px;font-family:var(--display);font-weight:600;font-size:.8rem;cursor:pointer;color:var(--ink);white-space:nowrap}
+.mini-btn:hover{border-color:var(--accent-2);color:var(--accent)}
+.mini-btn.fuerte{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--accent-ink);border-color:transparent}
+.alertas .mas{align-self:flex-start;border:0;background:none;color:var(--accent);font-weight:700;cursor:pointer;padding:2px 0}
+
+/* Cabecera y carga rápida de la pantalla Pedidos */
+.pedCab{display:flex;flex-direction:column;gap:10px;background:linear-gradient(135deg,#5E0F1E 0%,var(--sab) 65%,var(--sab-2) 100%);color:#fff;border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
+.pedCab .arriba{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.pedCab h2{margin:0;font-family:var(--display);font-size:1.35rem;letter-spacing:.02em}
+.pedCab .der{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pedCab .btn{background:#fff;color:var(--sab);box-shadow:none}
+.pedCab .btn.sec{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.4)}
+.rapidoBox{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.rapidoBox label{flex:1 1 300px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.rapidoBox label span{font-size:.82rem;font-weight:600;color:#FFE3E7}
+.rapidoBox textarea{width:100%;min-height:52px;resize:vertical;border:0;border-radius:10px;padding:9px 11px;background:rgba(255,255,255,.95);color:#2A0A10;font-size:1rem}
+.rapidoBox .mic{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.45);box-shadow:none}
+.rapidoBox.oyendo textarea{box-shadow:0 0 0 4px rgba(255,255,255,.45)}
+#rapEstado{font-size:.88rem;color:#FFE3E7;min-height:0}
+#rapEstado:empty{display:none}
+
+/* Contadores de pedidos */
+.pkpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.pkpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:2px;min-width:0}
+.pkpi .n{font-family:var(--mono);font-weight:700;font-size:1.45rem;color:var(--sab);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.pkpi .l{font-family:var(--display);font-weight:600;font-size:.9rem}
+.pkpi .s{font-size:.8rem;color:var(--muted)}
+
+/* Tablero por etapas */
+.etapas{display:flex;flex-direction:column;gap:10px}
+@container principal (min-width:560px){
+  .etapas{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-items:start}
+}
+@container principal (min-width:1500px){ .etapas{grid-template-columns:repeat(8,minmax(0,1fr))} }
+.etapa{background:linear-gradient(180deg,var(--sunk) 0%,transparent 100%);border:1px solid var(--line);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.etapa h3{margin:0;padding:2px 4px;font-family:var(--display);font-size:.78rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--sab);display:flex;justify-content:space-between;gap:6px}
+.etapa h3 .cnt{font-family:var(--mono);color:var(--muted)}
+.etapa .libre{font-size:.8rem;color:var(--muted);opacity:.75;padding:0 4px 4px}
+.pcard{position:relative;display:flex;flex-direction:column;gap:3px;text-align:left;background:var(--f-laboral);border:1px solid var(--line);border-top:4px solid var(--sab);border-radius:12px;padding:8px 10px;box-shadow:var(--shadow);cursor:pointer;color:inherit;font:inherit;min-width:0;transition:transform .15s,box-shadow .15s}
+.pcard:hover{transform:translateY(-2px);box-shadow:0 0 0 3px var(--glow),var(--shadow)}
+.pcard.late{border:2px solid var(--late);border-top:5px solid var(--late)}
+.pcard.today{border:2px solid var(--today);border-top:5px solid var(--today)}
+.pcard .num{font-family:var(--mono);font-size:.74rem;font-weight:700;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pcard .cli{font-weight:700;overflow-wrap:anywhere;line-height:1.25}
+.pcard .prod{font-size:.88rem;overflow-wrap:anywhere;line-height:1.3}
+.pcard .ent{font-family:var(--mono);font-size:.76rem;font-weight:700;color:var(--accent)}
+.pcard.late .ent{color:var(--late)} .pcard.today .ent{color:var(--today)}
+.pcard .din{display:flex;gap:5px;flex-wrap:wrap;font-size:.76rem}
+.tag{border-radius:6px;padding:0 6px;font-weight:700;font-size:.74rem;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.tag.rojo{background:var(--late-bg);color:var(--late)} .tag.ambar{background:var(--today-bg);color:var(--today)} .tag.verde{background:rgba(63,181,143,.18);color:var(--ok)}
+.tag.rap{background:var(--today);color:#fff}
+.pcard .avz{align-self:flex-start;margin-top:3px}
+.pedLista{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.pedLista .pcard{flex-direction:row;flex-wrap:wrap;gap:4px 12px;align-items:baseline;border-top-width:1px;background:var(--surface)}
+.pedVacio{border:1px dashed var(--line);border-radius:14px;padding:16px;color:var(--muted)}
+.pedVacio strong{color:var(--ink)}
+
+/* Ficha del pedido */
+dialog.ancho{width:min(860px,calc(100% - 20px));max-height:calc(100vh - 20px);padding:16px}
+@media (max-width:640px){ dialog.ancho{width:100%;max-width:100%;max-height:100%;height:100%;margin:0;border-radius:0} }
+.pedTop{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pedTop h3{flex:1 1 auto}
+.echip{border-radius:999px;padding:3px 12px;font-family:var(--display);font-weight:600;font-size:.85rem;background:var(--sab);color:#fff}
+.echip.arch{background:var(--muted)}
+.ojo{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;cursor:pointer;font-family:var(--display);font-weight:600;font-size:.85rem;color:var(--ink)}
+.pedCab .ojo{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.4)}
+fieldset.bloque{border:1px solid var(--line);border-radius:14px;padding:10px 12px 12px;margin:0;display:flex;flex-direction:column;gap:10px;min-width:0}
+fieldset.bloque legend{font-family:var(--display);font-weight:700;color:var(--sab);padding:0 6px;letter-spacing:.04em}
+fieldset.bloque h4{margin:4px 0 0;font-family:var(--display);font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.campo.chico{flex:0 1 130px}
+.chk{display:flex;gap:8px;align-items:center;font-weight:600}
+.chk input{width:18px;height:18px}
+.precioInfo{font-size:.85rem;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.precioInfo .aviso2{color:var(--today);font-weight:700}
+.totalBox{display:flex;justify-content:space-between;align-items:baseline;gap:10px;background:var(--sunk);border-radius:10px;padding:8px 12px;font-family:var(--display);font-weight:600}
+.totalBox b{font-family:var(--mono);font-size:1.25rem;color:var(--sab)}
+.avisoRapido{background:var(--today-bg);color:var(--today);border-radius:10px;padding:8px 12px;font-weight:600}
+.pasos{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:6px}
+.pasos li button{width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 8px;cursor:pointer;display:flex;flex-direction:column;gap:1px;color:var(--ink);font:inherit}
+.pasos li b{font-family:var(--display);font-size:.82rem}
+.pasos li span{font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+.pasos li.hecho button{background:var(--f-laboral);border-color:var(--sab-2)}
+.pasos li.actual button{background:linear-gradient(135deg,#7A1426,var(--sab));color:#fff;border-color:transparent}
+.pasos li.actual span{color:#FFE3E7}
+.ayudaP{margin:0;font-size:.86rem;color:var(--muted)}
+.ayudaP.error,.pEstado.error{color:var(--late);font-weight:600}
+.pEstado{font-size:.9rem;min-height:1.2em}
+.cuentas{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.cuenta{background:var(--sunk);border-radius:10px;padding:6px 10px;display:flex;flex-direction:column}
+.cuenta span{font-size:.78rem;color:var(--muted);font-weight:600}
+.cuenta b{font-family:var(--mono);font-size:1.05rem}
+.cuenta.falta b{color:var(--late)} .cuenta.ok b{color:var(--ok)}
+.movs{display:flex;flex-direction:column;gap:5px}
+.mov{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:var(--surface);cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.mov:hover{border-color:var(--accent-2)}
+.mov .f{font-family:var(--mono);font-size:.82rem;color:var(--muted)}
+.mov .d{flex:1 1 160px;min-width:0;overflow-wrap:anywhere}
+.mov .m{font-family:var(--mono);font-weight:700}
+.movs .nada{font-size:.85rem;color:var(--muted)}
+.btn.chico{padding:6px 12px;font-size:.88rem;align-self:flex-start}
+#dlgMov .soloFac,#dlgMov .soloCob{display:none}
+#dlgMov.fac .soloFac,#dlgMov.cob .soloCob{display:flex}
+
+/* Montos ocultos: los textos se reemplazan por puntos y los campos se ven borrosos hasta tocarlos */
+body.ocultos input.monto:not(:focus){filter:blur(6px)}
+
+/* Entregas y tareas de Sabelotodo en la Cronología */
+.card.pedido .cuando::after{content:" · entrega";font-weight:500;text-transform:none}
+.card .etq.ped{background:var(--sab);color:#fff}
+.rapido button.aPed{border-color:var(--sab);color:var(--sab)}
+fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
+@media (max-width:640px){ .modo button{padding:6px 4px;font-size:.8rem} }
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -506,6 +641,7 @@ dialog h3{color:var(--accent)}
       <button type="button" id="mCol" aria-pressed="false">Columnas</button>
       <button type="button" id="mLis" aria-pressed="false">Lista</button>
       <button type="button" id="mSem" aria-pressed="false">Semana</button>
+      <button type="button" id="mPed" aria-pressed="false">Pedidos</button>
     </div>
     <div class="modo" id="cortes" role="group" aria-label="Separar la cronología por">
       <button type="button" data-corte="semana" aria-pressed="true">Por semana</button>
@@ -513,6 +649,21 @@ dialog h3{color:var(--accent)}
     </div>
     <div class="vistaTxt" id="vistaTxt" hidden></div>
   </div>
+
+  <section class="pedCab" id="pedCab" hidden>
+    <div class="arriba">
+      <h2>Pedidos Sabelotodo</h2>
+      <div class="der"><button type="button" class="ojo" id="pedOjo"></button><button class="btn" type="button" id="pedNuevo">+ Nuevo pedido</button></div>
+    </div>
+    <div class="rapidoBox" id="rapBox">
+      <label><span>Pedido rápido: dictalo o escribilo y completalo después</span>
+        <textarea id="rapTxt" placeholder="Ej.: 100 libretas A6 para la Escuela 5, entrega el 20/11"></textarea></label>
+      <button class="mic" id="rapMic" type="button" aria-label="Dictar un pedido rápido" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8.5 21h7"/></svg></button>
+      <button class="btn sec" type="button" id="rapGuardar">Guardar rápido</button>
+    </div>
+    <div id="rapEstado" role="status" aria-live="polite"></div>
+  </section>
+  <section class="alertas" id="alertas" hidden aria-label="Alertas de Sabelotodo"></section>
 
   <section class="bienvenida" id="bienvenida" hidden>
     <h2>Conectá este dispositivo con tu planilla</h2>
@@ -547,7 +698,8 @@ dialog h3{color:var(--accent)}
     </div>
     <label class="campo"><span>Notas</span><textarea id="eNotas" rows="3"></textarea></label>
     <div class="acciones">
-      <button class="btn peligro" type="button" id="eBorrar">Eliminar</button>
+      <span class="fila"><button class="btn peligro" type="button" id="eBorrar">Eliminar</button>
+      <button class="btn sec" type="button" id="ePedido" hidden>→ Pasar a pedido</button></span>
       <span class="fila">
         <button class="btn sec" type="button" id="eCancelar">Cancelar</button>
         <button class="btn" type="submit">Guardar</button>
@@ -579,6 +731,93 @@ dialog h3{color:var(--accent)}
       <span class="fila">
         <button class="btn sec" type="button" id="cxCancelar">Cancelar</button>
         <button class="btn" type="submit" id="cxGuardar">Probar y guardar</button>
+      </span>
+    </div>
+  </form>
+</dialog>
+<dialog id="dlgPed" class="ancho">
+  <form id="frmPed" novalidate>
+    <div class="pedTop">
+      <h3 id="pTitulo">Nuevo pedido</h3>
+      <span id="pEtapaChip" class="echip"></span>
+      <button type="button" class="ojo" id="pOjo"></button>
+    </div>
+    <div id="pRapidoAviso" class="avisoRapido" hidden>Pedido cargado rápido: completá los datos que faltan y tocá Guardar.</div>
+    <fieldset class="bloque"><legend>Datos</legend>
+      <div class="fila">
+        <label class="campo"><span>Cliente</span><input id="pCliente" list="dlClientes" maxlength="120" autocomplete="off" placeholder="Elegí de la lista o escribí uno nuevo"></label>
+        <label class="campo chico"><span>CUIT</span><input id="pCuit" maxlength="20" inputmode="numeric" placeholder="opcional"></label>
+      </div>
+      <label class="campo"><span>Producto</span><select id="pProd"></select></label>
+      <label class="campo"><span>Detalle (colores, diseño, terminación…)</span><textarea id="pDetalle" rows="2"></textarea></label>
+      <div class="fila">
+        <label class="campo"><span>Cantidad</span><input id="pCant" type="number" min="0" step="1" inputmode="numeric"></label>
+        <label class="campo"><span>Precio unitario</span><input id="pUnit" class="monto" type="number" min="0" step="0.01" inputmode="decimal"></label>
+        <label class="campo chico"><span>Descuento %</span><input id="pDesc" type="number" min="0" max="100" step="0.5" inputmode="decimal"></label>
+      </div>
+      <div class="precioInfo" id="pPrecioInfo"></div>
+      <div class="totalBox"><span>Total del pedido</span><b id="pTotal"></b></div>
+      <div class="fila">
+        <label class="campo"><span>Fecha del pedido</span><input id="pFecha" type="date"></label>
+        <label class="campo"><span>Entrega prometida</span><input id="pEntrega" type="date"></label>
+      </div>
+      <label class="chk"><input type="checkbox" id="pNoFac"> Este trabajo no se factura</label>
+      <label class="campo"><span>Notas</span><textarea id="pNotas" rows="2"></textarea></label>
+    </fieldset>
+    <fieldset class="bloque"><legend>Etapa</legend>
+      <ol class="pasos" id="pPasos"></ol>
+      <div class="fila">
+        <label class="campo"><span>Etapa</span><select id="pEtapa"></select></label>
+        <label class="campo"><span>Desde el</span><input id="pEtapaFecha" type="date"></label>
+      </div>
+      <p class="ayudaP" id="pEtapaAyuda"></p>
+    </fieldset>
+    <fieldset class="bloque"><legend>Facturas y cobros</legend>
+      <div class="cuentas" id="pCuentas"></div>
+      <h4>Facturas</h4>
+      <div id="pFacturas" class="movs"></div>
+      <button type="button" class="btn sec chico" id="pAddFac">+ Factura</button>
+      <h4>Cobros</h4>
+      <div id="pCobros" class="movs"></div>
+      <button type="button" class="btn sec chico" id="pAddCob">+ Cobro</button>
+    </fieldset>
+    <div id="pEstado" class="pEstado" role="status" aria-live="polite"></div>
+    <div class="acciones">
+      <button class="btn peligro" type="button" id="pBorrar">Eliminar</button>
+      <span class="fila">
+        <button class="btn sec" type="button" id="pCancelar">Cerrar</button>
+        <button class="btn" type="submit" id="pGuardar">Guardar</button>
+      </span>
+    </div>
+  </form>
+</dialog>
+<datalist id="dlClientes"></datalist>
+<dialog id="dlgMov">
+  <form id="frmMov" novalidate>
+    <h3 id="mTitulo">Nueva factura</h3>
+    <p class="ayudaP" id="mSub"></p>
+    <div class="fila">
+      <label class="campo"><span>Fecha</span><input id="mFecha" type="date"></label>
+      <label class="campo"><span>Monto</span><input id="mMonto" class="monto" type="number" min="0" step="0.01" inputmode="decimal"></label>
+    </div>
+    <div class="fila soloFac">
+      <label class="campo"><span>Comprobante</span><select id="mComp"><option>Factura C</option><option>Factura B</option><option>Factura A</option><option>Nota de crédito</option><option>Otro</option></select></label>
+      <label class="campo"><span>Número</span><input id="mNumFac" placeholder="00001-00000123" autocomplete="off"></label>
+    </div>
+    <div class="fila soloCob">
+      <label class="campo"><span>Concepto</span><select id="mConc"><option>Seña</option><option>Pago parcial</option><option>Saldo / pago total</option></select></label>
+      <label class="campo"><span>Medio de pago</span><select id="mMedio"><option>Transferencia</option><option>Efectivo</option><option>Mercado Pago</option><option>Cheque</option><option>Otro</option></select></label>
+    </div>
+    <div class="fila soloCob">
+      <label class="campo"><span>N.º de recibo</span><input id="mRecibo" placeholder="Vacío = sin recibo" autocomplete="off"></label>
+    </div>
+    <label class="campo"><span>Notas</span><input id="mNotas" maxlength="500"></label>
+    <div id="mEstado" class="pEstado" role="status" aria-live="polite"></div>
+    <div class="acciones">
+      <button class="btn peligro" type="button" id="mBorrar">Eliminar</button>
+      <span class="fila">
+        <button class="btn sec" type="button" id="mCancelar">Cancelar</button>
+        <button class="btn" type="submit" id="mGuardar">Guardar</button>
       </span>
     </div>
   </form>
@@ -916,8 +1155,9 @@ dialog h3{color:var(--accent)}
     nodo.addEventListener("drop", function(e){
       e.preventDefault(); nodo.classList.remove("sobre");
       var id = e.dataTransfer.getData("text/plain");
-      var t = tareas.filter(function(x){ return x.id === id; })[0];
+      var t = itemPorId(id);
       if(!t || t.vence === fecha) return;
+      if(t._ped){ moverEntrega(t._ped, fecha); return; }
       col.doc(id).update({vence: fecha}).then(function(){
         estado(fecha ? "«" + t.titulo + "» pasó al " + fechaCorta(fecha) : "«" + t.titulo + "» quedó sin fecha");
       }, function(){ estado("No se pudo cambiar la fecha.", true); });
@@ -977,6 +1217,7 @@ dialog h3{color:var(--accent)}
   function sinAcentos(x){ return String(x || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""); }
   function moverA(t, fecha, btn){
     btn.disabled = true;
+    if(t._ped){ moverEntrega(t._ped, fecha); return; }
     col.doc(t.id).update({vence: fecha}).then(function(){
       estado(fecha ? "«" + t.titulo + "» pasó al " + fechaCorta(fecha) : "Fecha quitada");
     }, function(){ btn.disabled = false; estado("No se pudo cambiar la fecha.", true); });
@@ -1057,8 +1298,10 @@ dialog h3{color:var(--accent)}
   function render(){
     pintarAvance();
     var h = hoy(), G = grupos(h);
-    var pend = tareas.filter(function(t){ return !t.hecha; });
+    var pend = tareas.filter(function(t){ return !t.hecha; }).concat(entregasComoTareas());
     var base = pend.filter(coincide);
+    $("pedCab").hidden = modo !== "pedidos";
+    renderAlertas();
     var cnt = {}; G.forEach(function(g){ cnt[g.k] = base.filter(g.f); });
     var altas = base.filter(function(t){ return t.prioridad === "alta"; });
 
@@ -1105,6 +1348,7 @@ dialog h3{color:var(--accent)}
 
     var lista = $("lista"); lista.textContent = "";
     lista.className = modo; lista.style.display = "flex"; lista.style.flexDirection = "column"; lista.style.gap = "18px";
+    if(modo === "pedidos"){ vt.hidden = true; $("hechasBox").hidden = true; renderPedidos(lista); return; }
     if(modo === "semana"){
       if(!cargado) lista.appendChild(el("div", "vacio", "Cargando tus tareas…"));
       else renderSemana(lista, base);
@@ -1144,7 +1388,7 @@ dialog h3{color:var(--accent)}
   }
   $("kpis").addEventListener("click", function(e){
     var b = e.target.closest(".kpi"); if(!b) return;
-    if(modo === "semana"){ vista = b.dataset.vista; ponerModo("crono"); return; }
+    if(modo === "semana" || modo === "pedidos"){ vista = b.dataset.vista; ponerModo("crono"); return; }
     vista = vista === b.dataset.vista ? "" : b.dataset.vista; render();
   });
   $("filtros").addEventListener("click", function(e){
@@ -1154,7 +1398,7 @@ dialog h3{color:var(--accent)}
     render();
   });
   $("buscar").addEventListener("input", function(){ busca = sinAcentos(this.value.trim()); render(); });
-  var BOTON_MODO = {crono:"mCro", columnas:"mCol", lista:"mLis", semana:"mSem"};
+  var BOTON_MODO = {crono:"mCro", columnas:"mCol", lista:"mLis", semana:"mSem", pedidos:"mPed"};
   function pintarModo(){
     Object.keys(BOTON_MODO).forEach(function(k){ $(BOTON_MODO[k]).setAttribute("aria-pressed", modo === k ? "true" : "false"); });
     $("cortes").hidden = modo !== "crono";
@@ -1186,9 +1430,9 @@ dialog h3{color:var(--accent)}
   }
   function tarjeta(t, h){
     var clase = !t.vence ? "nodate" : t.vence < h ? "late" : t.vence === h ? "today" : "";
-    var d = el("div", "card " + t.area + " " + clase + (t.prioridad === "alta" ? " prio-alta" : "") + (recientes[t.id] ? " nueva" : ""));
+    var d = el("div", "card " + t.area + " " + clase + (t.prioridad === "alta" ? " prio-alta" : "") + (recientes[t.id] ? " nueva" : "") + (t._ped ? " pedido" : ""));
     var chk = el("button", "check"); chk.type = "button"; armarCheck(chk);
-    chk.setAttribute("aria-label", "Marcar como hecha: " + t.titulo);
+    chk.setAttribute("aria-label", (t._ped ? "Marcar como entregado: " : "Marcar como hecha: ") + t.titulo);
     chk.addEventListener("click", function(){ completar(t, d, chk); });
     var c = el("button", "cuerpo"); c.type = "button"; c.title = "Abrir para editar";
     var cuando;
@@ -1204,6 +1448,7 @@ dialog h3{color:var(--accent)}
     meta.appendChild(el("span", "area " + t.area, AREAS[t.area] || t.area));
     if(t.prioridad === "alta") meta.appendChild(el("span", "alta", "Prioridad alta"));
     if(String(t.id).indexOf("mail-") === 0) meta.appendChild(el("span", "etq", "desde mail"));
+    if(t._ped){ meta.appendChild(el("span", "etq ped", t._ped.numero)); meta.appendChild(el("span", "", nombreEtapa(t._ped.etapa))); }
     c.appendChild(meta);
     if(t.notas) c.appendChild(el("span", "notas", t.notas));
     c.addEventListener("click", function(){ abrir(t); });
@@ -1216,6 +1461,12 @@ dialog h3{color:var(--accent)}
       b.addEventListener("click", function(){ moverA(t, o[1], b); });
       r.appendChild(b);
     });
+    if(t.area === "laboral" && !t._ped && sabelotodoOk){
+      var bp = el("button", "aPed", "→ Pedido"); bp.type = "button";
+      bp.setAttribute("aria-label", "Pasar a pedido: " + t.titulo);
+      bp.addEventListener("click", function(){ tareaAPedido(t); });
+      r.appendChild(bp);
+    }
     d.appendChild(r);
     return d;
   }
@@ -1294,6 +1545,7 @@ dialog h3{color:var(--accent)}
   });
   function completar(t, nodo, chk){
     if(!col) return;
+    if(t._ped){ entregar(t._ped, nodo, chk); return; }
     chk.disabled = true;
     if(t.hecha){ // reabrir: sin festejo
       col.doc(t.id).update({hecha:false, hechaEn:""}).catch(function(){ chk.disabled = false; estado("No se pudo actualizar la tarea.", true); });
@@ -1344,6 +1596,8 @@ dialog h3{color:var(--accent)}
   /* ---------- Edición ---------- */
   var dlg = $("dlg"), borrarArmado = false;
   function abrir(t){
+    if(t._ped){ abrirPedido(t._ped); return; }
+    $("ePedido").hidden = t.area !== "laboral";
     editId = t.id; borrarArmado = false; $("eBorrar").textContent = "Eliminar";
     $("eTitulo").value = t.titulo; $("eArea").value = t.area; $("ePrio").value = t.prioridad;
     $("eVence").value = t.vence || ""; $("eHora").value = t.hora || ""; $("eNotas").value = t.notas || "";
@@ -1386,7 +1640,7 @@ dialog h3{color:var(--accent)}
   function horaCorta(d){ return d.toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"}); }
 
   // Copia local para ver las tareas al instante (y sin señal).
-  function guardarCopia(){ try { localStorage.setItem("agendaCopia", JSON.stringify({t: tareas, en: Date.now()})); } catch(e){} }
+  function guardarCopia(){ try { localStorage.setItem("agendaCopia", JSON.stringify({t: tareas, p: pedidos, m: movs, c: clientes, k: catalogo, s: sabelotodoOk, en: Date.now()})); } catch(e){} }
   try {
     var copia = JSON.parse(localStorage.getItem("agendaCopia") || "null");
     if(copia && Array.isArray(copia.t)){ tareas = copia.t; cargado = true; }
@@ -1432,6 +1686,8 @@ dialog h3{color:var(--accent)}
     if(!silencioso) setSync("cargando", "Actualizando…");
     api("listar").then(function(j){
       tareas = (j.tareas || []).map(function(t){ t.hecha = t.hecha === true; return t; });
+      sabelotodoOk = Array.isArray(j.pedidos);
+      if(sabelotodoOk){ pedidos = j.pedidos; movs = j.movimientos || []; clientes = j.clientes || []; catalogo = j.catalogo || []; pintarClientes(); }
       marcarNuevas(); cargado = true; ultimaVez = Date.now(); guardarCopia();
       $("bienvenida").hidden = true;
       setSync("", "Al día · " + horaCorta(new Date()));
@@ -1476,7 +1732,763 @@ dialog h3{color:var(--accent)}
     }).then(function(){ $("cxGuardar").disabled = false; });
   });
 
+
+  /* ================= v2.6: Pedidos Sabelotodo ================= */
+  // Un pedido = un producto. Etapas con fecha, precio del catálogo con descuento o precio a mano,
+  // facturas y cobros (varios por pedido), alertas, entregas en la Cronología y montos ocultos.
+  var pedidos = [], movs = [], clientes = [], catalogo = [], sabelotodoOk = false;
+  var ETAPAS = [
+    {k:"consulta", t:"Consulta"}, {k:"presupuesto", t:"Presupuesto enviado"}, {k:"aprobado", t:"Aprobado"},
+    {k:"diseno", t:"Diseño"}, {k:"disenoOk", t:"Diseño aprobado"}, {k:"produccion", t:"En producción"},
+    {k:"terminado", t:"Terminado"}, {k:"entregado", t:"Entregado"}
+  ];
+  var ARCHIVO = {rechazado:"Rechazado", cancelado:"Cancelado"};
+  var I_APROBADO = 2, I_ENTREGADO = 7;
+  function idxEtapa(k){ for(var i = 0; i < ETAPAS.length; i++) if(ETAPAS[i].k === k) return i; return -1; }
+  function nombreEtapa(k){ var i = idxEtapa(k); return i >= 0 ? ETAPAS[i].t : (ARCHIVO[k] || k); }
+  function archivado(p){ return p.etapa === "rechazado" || p.etapa === "cancelado"; }
+  function fechaEtapa(p, k){
+    var h = (p.historial || []).filter(function(x){ return x.e === k; });
+    return h.length ? h[h.length - 1].f : "";
+  }
+  function pedPorId(id){ return pedidos.filter(function(p){ return p.id === id; })[0] || null; }
+
+  /* ---------- Montos ---------- */
+  var verMontos = false;
+  try { verMontos = localStorage.getItem("verMontos") === "si"; } catch(e){}
+  function pintarOjos(){
+    document.body.classList.toggle("ocultos", !verMontos);
+    ["pedOjo", "pOjo"].forEach(function(id){
+      var b = $(id); if(!b) return;
+      b.textContent = verMontos ? "🙈 Ocultar montos" : "👁 Ver montos";
+      b.setAttribute("aria-pressed", verMontos ? "true" : "false");
+    });
+  }
+  function alternarMontos(){
+    verMontos = !verMontos;
+    try { localStorage.setItem("verMontos", verMontos ? "si" : "no"); } catch(e){}
+    pintarOjos(); render(); if(fichaAbierta()) pintarFichaDinero();
+  }
+  function plataTxt(n){ n = Math.round((+n || 0) * 100) / 100; return "$ " + n.toLocaleString("es-AR", {maximumFractionDigits: 2}); }
+  function plata(n){ return verMontos ? plataTxt(n) : "$ •••••"; }
+
+  /* ---------- Cuentas de cada pedido ---------- */
+  function movsDe(id){ return movs.filter(function(m){ return m.pedido === id; }); }
+  function totales(p){
+    var fac = 0, cob = 0;
+    movsDe(p.id).forEach(function(m){
+      var v = +m.monto || 0;
+      if(m.tipo === "factura") fac += m.comprobante === "Nota de crédito" ? -v : v;
+      else if(m.tipo === "cobro") cob += v;
+    });
+    var total = +p.total || 0;
+    return {total: total, facturado: fac, cobrado: cob,
+      saldo: Math.max(0, Math.round((total - cob) * 100) / 100),
+      aFacturar: p.noFactura ? 0 : Math.max(0, Math.round((total - fac) * 100) / 100)};
+  }
+  // Entregado, cobrado del todo y facturado (o "no se factura"): pasa a "Completos".
+  function completo(p){
+    if(p.etapa !== "entregado" || p.rapido) return false;
+    var t = totales(p); return t.saldo < 1 && t.aFacturar < 1;
+  }
+  function prodCorto(p){
+    var n = String(p.producto || "").replace(/\s*\(.*?\)\s*/g, " ").trim() || "Pedido";
+    return n + (p.cantidad ? " ×" + p.cantidad : "");
+  }
+
+  /* ---------- Catálogo y precios ---------- */
+  function prodDe(cod){ return catalogo.filter(function(x){ return x.codigo === cod; })[0] || null; }
+  // Siempre el precio de la escala menor o igual a la cantidad (75 → precio de 50).
+  // Si la cantidad es menor que la escala mínima, se sugiere el precio de la mínima y se avisa.
+  function precioCatalogo(cod, cant){
+    var p = prodDe(cod);
+    if(!p || !p.escalas || !p.escalas.length || !(cant > 0)) return null;
+    var e = null;
+    p.escalas.forEach(function(x){ if(x[0] <= cant) e = x; });
+    if(!e) return {precio: p.escalas[0][1], escala: p.escalas[0][0], bajoMinimo: true};
+    return {precio: e[1], escala: e[0], bajoMinimo: false};
+  }
+  function calcTotal(unit, cant, desc){ return Math.round((+unit || 0) * (+cant || 0) * (1 - (+desc || 0) / 100) * 100) / 100; }
+
+  /* ---------- Hablar con la planilla ---------- */
+  function errApi(e){ throw {code: e && e.code, message: textoError(e)}; }
+  function ponerPedido(p){
+    var i = -1; pedidos.forEach(function(x, k){ if(x.id === p.id) i = k; });
+    if(i >= 0) pedidos[i] = p; else pedidos.push(p);
+    guardarCopia(); render();
+  }
+  function guardarPedidoApi(p){
+    return api("pedidoGuardar", {pedido: p}).then(function(j){ ponerPedido(j.pedido); return j.pedido; }, errApi);
+  }
+  function borrarPedidoApi(id){
+    return api("pedidoBorrar", {id: id}).then(function(){
+      pedidos = pedidos.filter(function(p){ return p.id !== id; });
+      movs = movs.filter(function(m){ return m.pedido !== id; });
+      guardarCopia(); render();
+    }, errApi);
+  }
+  function guardarMovApi(m){
+    return api("movGuardar", {mov: m}).then(function(j){
+      var i = -1; movs.forEach(function(x, k){ if(x.id === j.mov.id) i = k; });
+      if(i >= 0) movs[i] = j.mov; else movs.push(j.mov);
+      guardarCopia(); render(); return j.mov;
+    }, errApi);
+  }
+  function borrarMovApi(id){
+    return api("movBorrar", {id: id}).then(function(){
+      movs = movs.filter(function(m){ return m.id !== id; }); guardarCopia(); render();
+    }, errApi);
+  }
+  function clientePorNombre(n){
+    var k = sinAcentos(String(n || "").trim());
+    return clientes.filter(function(c){ return sinAcentos(c.nombre) === k; })[0] || null;
+  }
+  function asegurarCliente(nombre, cuit){
+    var c = clientePorNombre(nombre);
+    if(c && (!cuit || cuit === c.cuit)) return Promise.resolve(c);
+    return api("clienteGuardar", {cliente: c ? {id: c.id, nombre: c.nombre, cuit: cuit} : {nombre: nombre, cuit: cuit}}).then(function(j){
+      clientes = clientes.filter(function(x){ return x.id !== j.cliente.id; }).concat([j.cliente]);
+      guardarCopia(); pintarClientes(); return j.cliente;
+    }, errApi);
+  }
+  function pintarClientes(){
+    var dl = $("dlClientes"); dl.textContent = "";
+    clientes.slice().sort(function(a, b){ return a.nombre.localeCompare(b.nombre); })
+      .forEach(function(c){ var o = el("option"); o.value = c.nombre; dl.appendChild(o); });
+  }
+  // Pasa un pedido a otra etapa con fecha (por defecto hoy) y deja registro en el historial.
+  function cambiarEtapa(p, etapa, fecha){
+    var copia = JSON.parse(JSON.stringify(p));
+    copia.etapa = etapa;
+    copia.historial = (copia.historial || []).concat([{e: etapa, f: fecha || hoy()}]);
+    return guardarPedidoApi(copia);
+  }
+
+  /* ---------- Alertas ---------- */
+  // "Visto" guarda en el pedido desde qué día vuelve a avisar (sincroniza entre dispositivos).
+  function alertasDe(p, h){
+    var out = [];
+    if(archivado(p)) return out;
+    var vistos = p.vistos || {};
+    function add(key, nivel, txt, accion, repite){
+      var v = vistos[key]; if(v && v > h) return;
+      out.push({p: p, key: key, nivel: nivel, txt: txt, accion: accion, repite: repite});
+    }
+    if(p.rapido) add("rapido", "today", "Cargado rápido: faltan datos", "completar", 1);
+    var ie = idxEtapa(p.etapa);
+    if(p.entrega && ie < I_ENTREGADO){
+      var d = diasEntre(h, p.entrega), cuando = fechaCorta(p.entrega);
+      if(d < 0) add("atr@" + p.entrega, "late", "Entrega atrasada · era el " + cuando + " (hace " + (-d) + (d === -1 ? " día)" : " días)"), "entregar", 1);
+      else if(d === 0) add("hoy@" + p.entrega, "today", "Se entrega hoy", "entregar", 1);
+      else if(d <= 2) add("e2@" + p.entrega, "today", "Entrega en " + d + (d === 1 ? " día" : " días") + " · " + cuando, "abrir", 0);
+      else if(d <= 4) add("e4@" + p.entrega, "", "Entrega en " + d + " días · " + cuando, "abrir", 0);
+      else if(d <= 7) add("e7@" + p.entrega, "", "Entrega en una semana · " + cuando, "abrir", 0);
+    }
+    if(p.etapa === "entregado"){
+      var t = totales(p), fe = fechaEtapa(p, "entregado"), hace = fe ? diasEntre(fe, h) : 0;
+      var desde = hace > 0 ? " · entregado hace " + hace + (hace === 1 ? " día" : " días") : " · entregado hoy";
+      if(t.aFacturar >= 1) add("fac", "late", "Entregado y sin facturar · falta " + plata(t.aFacturar) + desde, "factura", 2);
+      if(t.saldo >= 1) add("cob", "late", "Saldo sin cobrar · " + plata(t.saldo) + desde, "cobro", 2);
+    }
+    if(p.etapa === "presupuesto"){
+      var fp = fechaEtapa(p, "presupuesto") || p.fechaPedido, n = fp ? diasEntre(fp, h) : 0;
+      if(n >= 7) add("pre", "", "Presupuesto sin respuesta hace " + n + " días", "abrir", 7);
+    }
+    return out;
+  }
+  function todasLasAlertas(){
+    var h = hoy(), peso = {late: 0, today: 1, "": 2}, todas = [];
+    pedidos.forEach(function(p){ todas = todas.concat(alertasDe(p, h)); });
+    return todas.sort(function(a, b){
+      return (peso[a.nivel] - peso[b.nivel]) || (a.p.entrega || "9").localeCompare(b.p.entrega || "9");
+    });
+  }
+  function marcarVisto(a){
+    var p = a.p, v = {};
+    var h = hoy();
+    Object.keys(p.vistos || {}).forEach(function(k){ if(p.vistos[k] > h) v[k] = p.vistos[k]; }); // se limpian los vencidos
+    v[a.key] = a.repite ? masDias(a.repite) : "9999-12-31";
+    var copia = JSON.parse(JSON.stringify(p)); copia.vistos = v;
+    // Se ve al instante; si no se puede guardar, vuelve a aparecer.
+    var antes = p; ponerPedido(copia);
+    api("pedidoGuardar", {pedido: copia}).then(function(j){ ponerPedido(j.pedido); }, function(e){
+      ponerPedido(antes); estado(textoError(e), true);
+    });
+  }
+  var alertasTodas = false;
+  function renderAlertas(){
+    var box = $("alertas"), lista = sabelotodoOk ? todasLasAlertas() : [];
+    var mostrar = lista.length && (modo === "pedidos" || !filtro || filtro === "laboral");
+    box.hidden = !mostrar; box.textContent = "";
+    if(!mostrar) return;
+    var h2 = el("h2", "", "Alertas Sabelotodo · "); h2.appendChild(el("span", "cnt", String(lista.length)));
+    box.appendChild(h2);
+    var tope = alertasTodas ? lista.length : 4;
+    lista.slice(0, tope).forEach(function(a){
+      var p = a.p, fila_ = el("div", "alerta " + a.nivel);
+      var q = el("button", "que"); q.type = "button";
+      q.appendChild(el("b", "", a.txt));
+      q.appendChild(el("span", "", p.numero + " · " + (p.cliente || "sin cliente") + " · " + prodCorto(p)));
+      q.addEventListener("click", function(){ abrirPedido(p); });
+      fila_.appendChild(q);
+      var acc = el("div", "acc");
+      var nombres = {entregar: "Entregado", factura: "+ Factura", cobro: "+ Cobro", completar: "Completar", abrir: "Abrir"};
+      var b1 = el("button", "mini-btn fuerte", nombres[a.accion] || "Abrir"); b1.type = "button";
+      b1.addEventListener("click", function(){
+        if(a.accion === "entregar") entregar(p, null, b1);
+        else if(a.accion === "factura") abrirMov(p, "factura");
+        else if(a.accion === "cobro") abrirMov(p, "cobro");
+        else abrirPedido(p);
+      });
+      acc.appendChild(b1);
+      var b2 = el("button", "mini-btn", "Visto"); b2.type = "button";
+      b2.title = a.repite ? "Vuelve a avisar en " + a.repite + (a.repite === 1 ? " día" : " días") : "No vuelve a avisar por esto";
+      b2.addEventListener("click", function(){ marcarVisto(a); });
+      acc.appendChild(b2);
+      fila_.appendChild(acc);
+      box.appendChild(fila_);
+    });
+    if(lista.length > 4){
+      var m = el("button", "mas", alertasTodas ? "Ver menos" : "Ver las " + lista.length + " alertas"); m.type = "button";
+      m.addEventListener("click", function(){ alertasTodas = !alertasTodas; renderAlertas(); });
+      box.appendChild(m);
+    }
+  }
+
+  /* ---------- Entregas en la Cronología ---------- */
+  // Cada pedido con fecha de entrega aparece como tarjeta de Sabelotodo. No se guarda como tarea:
+  // sale del pedido. Tildarla lo marca entregado; los botones de fecha mueven la entrega.
+  function entregasComoTareas(){
+    if(!sabelotodoOk) return [];
+    return pedidos.filter(function(p){ return p.entrega && !archivado(p) && idxEtapa(p.etapa) < I_ENTREGADO; })
+      .map(function(p){
+        return {id: "ped:" + p.id, titulo: "Entregar " + prodCorto(p) + (p.cliente ? " — " + p.cliente : ""),
+          area: "laboral", prioridad: "media", vence: p.entrega, hora: "", notas: "", hecha: false,
+          creada: p.creado || "", _ped: p};
+      });
+  }
+  function itemPorId(id){
+    return tareas.concat(entregasComoTareas()).filter(function(t){ return t.id === id; })[0] || null;
+  }
+  function moverEntrega(p, fecha){
+    if(!fecha){ estado("Un pedido no puede quedar sin fecha de entrega.", true); render(); return Promise.resolve(); }
+    var copia = JSON.parse(JSON.stringify(p)); copia.entrega = fecha;
+    return guardarPedidoApi(copia).then(function(){
+      estado("Entrega de " + p.numero + " pasó al " + fechaCorta(fecha));
+    }, function(e){ estado(e.message || "No se pudo cambiar la entrega.", true); });
+  }
+  function entregar(p, nodo, btn){
+    if(btn) btn.disabled = true;
+    var antes = JSON.parse(JSON.stringify(p));
+    if(nodo) nodo.classList.add("cumpliendo");
+    cambiarEtapa(p, "entregado", hoy()).then(function(){
+      aviso("Entregado: " + p.numero + " · " + prodCorto(p), function(){ guardarPedidoApi(antes); });
+    }, function(e){
+      if(nodo) nodo.classList.remove("cumpliendo"); if(btn) btn.disabled = false;
+      estado(e.message || "No se pudo marcar como entregado.", true);
+    });
+  }
+
+  /* ---------- Pantalla de pedidos ---------- */
+  function coincidePed(p){
+    if(!busca) return true;
+    return sinAcentos([p.numero, p.cliente, p.producto, p.codigo, p.detalle, p.notas].join(" ")).indexOf(busca) >= 0;
+  }
+  function pkpi(n, l, s){
+    var d = el("div", "pkpi"); d.appendChild(el("span", "n", n)); d.appendChild(el("span", "l", l));
+    if(s) d.appendChild(el("span", "s", s)); return d;
+  }
+  function pedCard(p, h, enLista){
+    var ie = idxEtapa(p.etapa), pendEntrega = p.entrega && ie < I_ENTREGADO && !archivado(p);
+    var clase = pendEntrega ? (p.entrega < h ? " late" : p.entrega === h ? " today" : "") : "";
+    var c = el("div", "pcard" + clase); c.setAttribute("role", "button"); c.tabIndex = 0;
+    c.setAttribute("aria-label", "Abrir pedido " + p.numero);
+    var num = el("span", "num", p.numero);
+    if(p.rapido) num.appendChild(el("span", "tag rap", "Completar"));
+    if(enLista) num.appendChild(el("span", "tag", nombreEtapa(p.etapa)));
+    c.appendChild(num);
+    c.appendChild(el("span", "cli", p.cliente || "Sin cliente"));
+    c.appendChild(el("span", "prod", prodCorto(p)));
+    if(archivado(p)) c.appendChild(el("span", "ent", nombreEtapa(p.etapa) + (fechaEtapa(p, p.etapa) ? " el " + fechaCorta(fechaEtapa(p, p.etapa)) : "")));
+    else if(ie >= I_ENTREGADO){ var fe = fechaEtapa(p, "entregado"); c.appendChild(el("span", "ent", "Entregado " + (fe ? fechaCorta(fe) : ""))); }
+    else if(p.entrega){
+      var d = diasEntre(h, p.entrega);
+      c.appendChild(el("span", "ent", "Entrega " + fechaCorta(p.entrega) + (d < 0 ? " · atrasada" : d === 0 ? " · hoy" : d <= 7 ? " · en " + d + (d === 1 ? " día" : " días") : "")));
+    } else if(ie >= I_APROBADO) c.appendChild(el("span", "ent", "Falta fecha de entrega"));
+    var t = totales(p), din = el("span", "din");
+    din.appendChild(el("span", "tag", plata(t.total)));
+    if(!archivado(p) && ie >= I_APROBADO){
+      if(t.cobrado > 0 && t.saldo >= 1) din.appendChild(el("span", "tag ambar", "Saldo " + plata(t.saldo)));
+      else if(t.saldo >= 1) din.appendChild(el("span", "tag" + (ie >= I_ENTREGADO ? " rojo" : ""), "Sin cobrar"));
+      else if(t.total > 0) din.appendChild(el("span", "tag verde", "Cobrado"));
+      if(p.noFactura) din.appendChild(el("span", "tag", "No se factura"));
+      else if(t.aFacturar >= 1) din.appendChild(el("span", "tag" + (ie >= I_ENTREGADO ? " rojo" : ""), t.facturado > 0 ? "Facturado en parte" : "Sin facturar"));
+      else if(t.total > 0) din.appendChild(el("span", "tag verde", "Facturado"));
+    }
+    c.appendChild(din);
+    if(!enLista && !archivado(p) && ie < I_ENTREGADO){
+      var sig = ETAPAS[ie + 1];
+      var b = el("button", "mini-btn avz", "→ " + sig.t); b.type = "button";
+      b.setAttribute("aria-label", "Pasar " + p.numero + " a " + sig.t);
+      b.addEventListener("click", function(e){ e.stopPropagation(); avanzar(p, b); });
+      c.appendChild(b);
+    }
+    c.addEventListener("click", function(){ abrirPedido(p); });
+    c.addEventListener("keydown", function(e){ if((e.key === "Enter" || e.key === " ") && e.target === c){ e.preventDefault(); abrirPedido(p); } });
+    return c;
+  }
+  function avanzar(p, btn){
+    var ie = idxEtapa(p.etapa), sig = ETAPAS[ie + 1];
+    if(!sig) return;
+    if(idxEtapa(sig.k) >= I_APROBADO && !p.entrega){
+      abrirPedido(p, {etapa: sig.k});
+      fichaEstado("Para pasar a «" + sig.t + "» poné la fecha de entrega prometida.", true);
+      return;
+    }
+    if(sig.k === "entregado"){ entregar(p, null, btn); return; }
+    btn.disabled = true;
+    var antes = JSON.parse(JSON.stringify(p));
+    cambiarEtapa(p, sig.k, hoy()).then(function(){
+      aviso(p.numero + " pasó a " + sig.t, function(){ guardarPedidoApi(antes); });
+    }, function(e){ btn.disabled = false; estado(e.message || "No se pudo cambiar la etapa.", true); });
+  }
+  function renderPedidos(lista){
+    lista.className = "pedidosVista";
+    if(!sabelotodoOk){
+      var v = el("div", "pedVacio");
+      v.appendChild(el("strong", "", "Falta actualizar el programa de la planilla. "));
+      v.appendChild(document.createTextNode(CX.url ? "Para usar los pedidos, pegá el Code.gs nuevo (v2.0) en la planilla y volvé a implementar con «Nueva versión». Está explicado en la guía de instalación." : "Primero conectá este dispositivo con la planilla (botón Conexión)."));
+      lista.appendChild(v); return;
+    }
+    var h = hoy(), sem = masDias(7);
+    var act = pedidos.filter(function(p){ return !archivado(p); });
+    var aCob = 0, nCob = 0, aFac = 0, nFac = 0, nEnt = 0, nPre = 0, nMarcha = 0;
+    act.forEach(function(p){
+      var ie = idxEtapa(p.etapa), t = totales(p);
+      if(ie >= I_APROBADO){
+        if(t.saldo >= 1){ aCob += t.saldo; nCob++; }
+        if(t.aFacturar >= 1){ aFac += t.aFacturar; nFac++; }
+      }
+      if(ie < I_APROBADO) nPre++;
+      else if(ie < I_ENTREGADO){ nMarcha++; if(p.entrega && p.entrega <= sem) nEnt++; }
+    });
+    var K = el("div", "pkpis");
+    K.appendChild(pkpi(plata(aCob), "A cobrar", nCob + (nCob === 1 ? " pedido" : " pedidos")));
+    K.appendChild(pkpi(plata(aFac), "A facturar", nFac + (nFac === 1 ? " pedido" : " pedidos")));
+    K.appendChild(pkpi(String(nEnt), "Entregas en 7 días", "incluye atrasadas"));
+    K.appendChild(pkpi(String(nMarcha), "En marcha", "de aprobado a terminado"));
+    K.appendChild(pkpi(String(nPre), "Consultas y presupuestos", "todavía sin aprobar"));
+    lista.appendChild(K);
+
+    var vis = pedidos.filter(coincidePed);
+    if(!pedidos.length){
+      var v0 = el("div", "pedVacio");
+      v0.appendChild(el("strong", "", "Todavía no hay pedidos. "));
+      v0.appendChild(document.createTextNode("Tocá «+ Nuevo pedido», dictá uno rápido arriba, o pasá a pedido una tarea de Sabelotodo de la Cronología (botón «→ Pedido»)."));
+      lista.appendChild(v0); return;
+    }
+    if(busca && !vis.length){ lista.appendChild(el("div", "pedVacio", "Ningún pedido coincide con «" + $("buscar").value + "».")); return; }
+    var ordenPed = function(a, b){ return (a.entrega || "9").localeCompare(b.entrega || "9") || String(a.numero).localeCompare(String(b.numero)); };
+    var tablero = el("div", "etapas");
+    ETAPAS.forEach(function(E){
+      var its = vis.filter(function(p){ return p.etapa === E.k && !completo(p); }).sort(ordenPed);
+      var col_ = el("section", "etapa");
+      var h3 = el("h3", "", E.k === "entregado" ? "Entregado, con pendientes" : E.t); h3.appendChild(el("span", "cnt", String(its.length)));
+      col_.appendChild(h3);
+      its.forEach(function(p){ col_.appendChild(pedCard(p, h, false)); });
+      if(!its.length) col_.appendChild(el("span", "libre", "—"));
+      tablero.appendChild(col_);
+    });
+    lista.appendChild(tablero);
+    var compl = vis.filter(completo).sort(function(a, b){ return fechaEtapa(b, "entregado").localeCompare(fechaEtapa(a, "entregado")); });
+    var arch = vis.filter(archivado).sort(function(a, b){ return String(b.numero).localeCompare(String(a.numero)); });
+    [["Completos: entregados, facturados y cobrados", compl], ["Rechazados y cancelados", arch]].forEach(function(x){
+      if(!x[1].length) return;
+      var d = el("details"), s = el("summary", "", x[0] + " · " + x[1].length);
+      d.appendChild(s);
+      var L = el("div", "pedLista");
+      x[1].slice(0, 80).forEach(function(p){ L.appendChild(pedCard(p, h, true)); });
+      d.appendChild(L); lista.appendChild(d);
+    });
+  }
+
+  /* ---------- Ficha del pedido ---------- */
+  var dlgP = $("dlgPed"), fp = null; // fp = {orig, id, tareaOrigen, rapido}
+  function fichaAbierta(){ return dlgP.open; }
+  function fichaEstado(txt, error){ var s = $("pEstado"); s.textContent = txt || ""; s.className = "pEstado" + (error ? " error" : ""); }
+  (function armarSelects(){
+    var se = $("pEtapa");
+    ETAPAS.forEach(function(E){ var o = el("option", "", E.t); o.value = E.k; se.appendChild(o); });
+    var og = el("optgroup"); og.label = "Archivar";
+    Object.keys(ARCHIVO).forEach(function(k){ var o = el("option", "", ARCHIVO[k]); o.value = k; og.appendChild(o); });
+    se.appendChild(og);
+  })();
+  function pintarProductos(actual){
+    var s = $("pProd"); s.textContent = "";
+    var o0 = el("option", "", "Elegí un producto…"); o0.value = ""; s.appendChild(o0);
+    var porCat = {}, orden_ = [];
+    catalogo.forEach(function(p){ if(!porCat[p.categoria]){ porCat[p.categoria] = []; orden_.push(p.categoria); } porCat[p.categoria].push(p); });
+    orden_.forEach(function(cat){
+      var g = el("optgroup"); g.label = cat || "Otros";
+      porCat[cat].forEach(function(p){ var o = el("option", "", p.producto + " · " + p.codigo); o.value = p.codigo; g.appendChild(o); });
+      s.appendChild(g);
+    });
+    if(actual && actual.codigo && !prodDe(actual.codigo)){ // producto que ya no está en el catálogo
+      var ox = el("option", "", (actual.producto || actual.codigo) + " (fuera del catálogo)"); ox.value = actual.codigo; s.appendChild(ox);
+    }
+  }
+  var unitManual = false;
+  function recalcular(desdeCatalogo){
+    var cod = $("pProd").value, cant = +$("pCant").value || 0, pc = precioCatalogo(cod, cant), info = $("pPrecioInfo");
+    if(desdeCatalogo && pc && !unitManual) $("pUnit").value = pc.precio;
+    info.textContent = "";
+    var prod = prodDe(cod);
+    if(pc){
+      info.appendChild(el("span", "", "Catálogo: " + plata(pc.precio) + " c/u (escala de " + pc.escala + ")"));
+      if(pc.bajoMinimo) info.appendChild(el("span", "aviso2", "La cantidad es menor que la mínima del catálogo (" + pc.escala + "): revisá el precio."));
+      if(String(pc.precio) !== String(+$("pUnit").value)){
+        var b = el("button", "mini-btn", "Usar precio de catálogo"); b.type = "button";
+        b.addEventListener("click", function(){ unitManual = false; $("pUnit").value = pc.precio; recalcular(false); });
+        info.appendChild(b);
+        info.appendChild(el("span", "", "· precio especial"));
+      }
+    } else if(prod && (!prod.escalas || !prod.escalas.length)) info.appendChild(el("span", "", "Sin precio de catálogo: poné el precio a mano."));
+    $("pTotal").textContent = plata(calcTotal($("pUnit").value, cant, $("pDesc").value));
+  }
+  $("pProd").addEventListener("change", function(){ unitManual = false; recalcular(true); });
+  $("pCant").addEventListener("input", function(){ recalcular(true); });
+  $("pUnit").addEventListener("input", function(){ unitManual = true; recalcular(false); });
+  $("pDesc").addEventListener("input", function(){ recalcular(false); });
+  $("pCliente").addEventListener("change", function(){
+    var c = clientePorNombre(this.value); if(c && !$("pCuit").value) $("pCuit").value = c.cuit || "";
+  });
+  function pintarPasos(){
+    var p = fp.orig || {}, sel = $("pEtapa").value, iSel = idxEtapa(sel), L = $("pPasos"); L.textContent = "";
+    ETAPAS.forEach(function(E, i){
+      var f = fechaEtapa(p, E.k);
+      var li = el("li", i === iSel ? "actual" : (iSel >= 0 && i < iSel) || (iSel < 0 && f) ? "hecho" : "");
+      var b = el("button"); b.type = "button";
+      b.appendChild(el("b", "", E.t));
+      b.appendChild(el("span", "", i === iSel ? fechaCorta($("pEtapaFecha").value || hoy()) : f ? fechaCorta(f) : "—"));
+      b.addEventListener("click", function(){ $("pEtapa").value = E.k; etapaCambio(); });
+      li.appendChild(b); L.appendChild(li);
+    });
+    var chip = $("pEtapaChip"); chip.textContent = nombreEtapa(sel); chip.className = "echip" + (ARCHIVO[sel] ? " arch" : "");
+    var ay = $("pEtapaAyuda");
+    ay.className = "ayudaP";
+    ay.textContent = (iSel >= I_APROBADO || ARCHIVO[sel]) ? "" : "Desde «Aprobado» en adelante la fecha de entrega es obligatoria.";
+    if(iSel >= I_APROBADO && !$("pEntrega").value){ ay.textContent = "Falta la fecha de entrega prometida (obligatoria desde «Aprobado»)."; ay.className = "ayudaP error"; }
+  }
+  function etapaCambio(){
+    var p = fp.orig, sel = $("pEtapa").value;
+    $("pEtapaFecha").value = p && p.etapa === sel ? (fechaEtapa(p, sel) || hoy()) : hoy();
+    pintarPasos();
+  }
+  $("pEtapa").addEventListener("change", etapaCambio);
+  $("pEtapaFecha").addEventListener("input", pintarPasos);
+  $("pEntrega").addEventListener("input", pintarPasos);
+  function pintarFichaDinero(){
+    recalcular(false);
+    var C = $("pCuentas"), F = $("pFacturas"), K = $("pCobros");
+    C.textContent = ""; F.textContent = ""; K.textContent = "";
+    var p = fp && fp.id ? pedPorId(fp.id) : null;
+    if(!p){
+      C.appendChild(el("p", "ayudaP", "Guardá el pedido para cargar facturas y cobros (o tocá «+ Factura» / «+ Cobro» y se guarda solo)."));
+      return;
+    }
+    var t = totales(p), noFac = $("pNoFac").checked;
+    function cuenta(l, v, cls){ var d = el("div", "cuenta " + (cls || "")); d.appendChild(el("span", "", l)); d.appendChild(el("b", "", v)); C.appendChild(d); }
+    cuenta("Total", plata(t.total));
+    if(noFac) cuenta("Facturación", "No se factura");
+    else { cuenta("Facturado", plata(t.facturado)); cuenta("A facturar", plata(t.aFacturar), t.aFacturar >= 1 ? "falta" : "ok"); }
+    cuenta("Cobrado", plata(t.cobrado));
+    cuenta("Saldo", plata(t.saldo), t.saldo >= 1 ? "falta" : "ok");
+    var ms = movsDe(p.id).sort(function(a, b){ return a.fecha.localeCompare(b.fecha) || String(a.creado).localeCompare(String(b.creado)); });
+    function filaMov(m){
+      var b = el("button", "mov"); b.type = "button";
+      b.appendChild(el("span", "f", fechaCorta(m.fecha)));
+      var desc = m.tipo === "factura" ? [m.comprobante, m.numero ? "N.º " + m.numero : ""] : [m.comprobante, m.medio, m.numero ? "Recibo " + m.numero : "sin recibo"];
+      if(m.notas) desc.push(m.notas);
+      b.appendChild(el("span", "d", desc.filter(String).join(" · ")));
+      b.appendChild(el("span", "m", (m.comprobante === "Nota de crédito" ? "− " : "") + plata(m.monto)));
+      b.addEventListener("click", function(){ abrirMov(p, m.tipo, m); });
+      return b;
+    }
+    var fs = ms.filter(function(m){ return m.tipo === "factura"; }), cs = ms.filter(function(m){ return m.tipo === "cobro"; });
+    if(fs.length) fs.forEach(function(m){ F.appendChild(filaMov(m)); }); else F.appendChild(el("span", "nada", noFac ? "No se factura." : "Sin facturas todavía."));
+    if(cs.length) cs.forEach(function(m){ K.appendChild(filaMov(m)); }); else K.appendChild(el("span", "nada", "Sin cobros todavía."));
+  }
+  $("pNoFac").addEventListener("change", pintarFichaDinero);
+  // abrirPedido(p) abre uno existente; abrirPedido(null, datos) abre uno nuevo con datos sugeridos.
+  function abrirPedido(p, pre){
+    if(!sabelotodoOk){ estado("Para usar los pedidos falta actualizar el programa de la planilla.", true); return; }
+    pre = pre || {};
+    var base = p ? JSON.parse(JSON.stringify(p)) : null;
+    fp = {orig: base, id: p ? p.id : null, tareaOrigen: pre.tareaOrigen || (p && p.tareaOrigen) || "", rapido: p ? p.rapido : false};
+    var d = Object.assign({cliente: "", codigo: "", producto: "", detalle: "", cantidad: "", precioUnit: "", descuento: "",
+      fechaPedido: hoy(), entrega: "", noFactura: false, notas: "", etapa: "consulta"}, base || {}, pre);
+    $("pTitulo").textContent = p ? "Pedido " + p.numero : "Nuevo pedido";
+    $("pRapidoAviso").hidden = !(p && p.rapido);
+    $("pCliente").value = d.cliente || "";
+    var cli = clientePorNombre(d.cliente); $("pCuit").value = cli ? (cli.cuit || "") : "";
+    pintarProductos(d);
+    $("pProd").value = d.codigo || "";
+    $("pDetalle").value = d.detalle || "";
+    $("pCant").value = d.cantidad || "";
+    $("pDesc").value = d.descuento || "";
+    unitManual = !!(p && p.precioUnit && String(p.precioUnit) !== String(p.precioLista));
+    $("pUnit").value = d.precioUnit || "";
+    if(!p && d.codigo && d.cantidad && !d.precioUnit){ var pc = precioCatalogo(d.codigo, +d.cantidad); if(pc) $("pUnit").value = pc.precio; }
+    $("pFecha").value = d.fechaPedido || hoy();
+    $("pEntrega").value = d.entrega || "";
+    $("pNoFac").checked = !!d.noFactura;
+    $("pNotas").value = d.notas || "";
+    $("pEtapa").value = d.etapa || "consulta";
+    $("pEtapaFecha").value = base && base.etapa === $("pEtapa").value ? (fechaEtapa(base, base.etapa) || hoy()) : hoy();
+    borrarPedArmado = false; $("pBorrar").textContent = "Eliminar"; $("pBorrar").hidden = !p;
+    fichaEstado("");
+    pintarClientes(); pintarOjos(); pintarPasos(); pintarFichaDinero();
+    if(dlgP.showModal) dlgP.showModal(); else dlgP.setAttribute("open", "");
+  }
+  function cerrarFicha(){ if(dlgP.close) dlgP.close(); else dlgP.removeAttribute("open"); fp = null; }
+  $("pCancelar").addEventListener("click", cerrarFicha);
+  $("pOjo").addEventListener("click", alternarMontos);
+  // Junta lo cargado en la ficha. Si falta algo obligatorio devuelve el motivo.
+  function leerFicha(){
+    var cliente = $("pCliente").value.trim(), cod = $("pProd").value, cant = +$("pCant").value || 0;
+    var etapa = $("pEtapa").value, fEtapa = $("pEtapaFecha").value || hoy(), entrega = $("pEntrega").value;
+    if(!cliente) return {error: "Falta el cliente.", foco: "pCliente"};
+    if(!cod) return {error: "Falta elegir el producto.", foco: "pProd"};
+    if(!(cant > 0)) return {error: "Falta la cantidad.", foco: "pCant"};
+    if(!$("pFecha").value) return {error: "Falta la fecha del pedido.", foco: "pFecha"};
+    if(idxEtapa(etapa) >= I_APROBADO && !entrega) return {error: "Desde «Aprobado» la fecha de entrega es obligatoria.", foco: "pEntrega"};
+    var unit = +$("pUnit").value || 0, desc = Math.min(100, Math.max(0, +$("pDesc").value || 0));
+    var pc = precioCatalogo(cod, cant), prod = prodDe(cod);
+    var o = fp.orig ? JSON.parse(JSON.stringify(fp.orig)) : {historial: [], vistos: {}};
+    var hist = o.historial || [];
+    if(!fp.orig || fp.orig.etapa !== etapa) hist = hist.concat([{e: etapa, f: fEtapa}]);
+    else if(hist.length && hist[hist.length - 1].e === etapa) hist[hist.length - 1].f = fEtapa; // corrige la fecha de la etapa actual
+    else hist = hist.concat([{e: etapa, f: fEtapa}]);
+    return {pedido: Object.assign(o, {
+      cliente: cliente, codigo: cod, producto: prod ? prod.producto : (o.producto || cod), detalle: $("pDetalle").value.trim(),
+      cantidad: cant, precioLista: pc ? pc.precio : 0, precioUnit: unit, descuento: desc, total: calcTotal(unit, cant, desc),
+      etapa: etapa, historial: hist, fechaPedido: $("pFecha").value, entrega: entrega, noFactura: $("pNoFac").checked,
+      notas: $("pNotas").value.trim(), rapido: false, tareaOrigen: fp.tareaOrigen || ""
+    }), cuit: $("pCuit").value.trim()};
+  }
+  var guardandoFicha = false;
+  function guardarFicha(){
+    if(guardandoFicha) return Promise.reject({silencio: true});
+    var r = leerFicha();
+    if(r.error){ fichaEstado(r.error, true); if(r.foco) $(r.foco).focus(); return Promise.reject({silencio: true}); }
+    guardandoFicha = true; $("pGuardar").disabled = true; fichaEstado("Guardando…");
+    var nuevo = !fp.id, tareaO = fp.tareaOrigen;
+    return asegurarCliente(r.pedido.cliente, r.cuit).then(function(c){
+      r.pedido.cliente = c.nombre; r.pedido.clienteId = c.id;
+      return guardarPedidoApi(r.pedido);
+    }).then(function(p){
+      if(fp){ fp.id = p.id; fp.orig = JSON.parse(JSON.stringify(p)); }
+      $("pTitulo").textContent = "Pedido " + p.numero; $("pRapidoAviso").hidden = true; $("pBorrar").hidden = false;
+      fichaEstado("Guardado.");
+      // Si vino de una tarea de la agenda, la tarea queda hecha con la referencia al pedido.
+      if(nuevo && tareaO){
+        var t = tareas.filter(function(x){ return x.id === tareaO; })[0];
+        if(t && !t.hecha) col.doc(t.id).update({hecha: true, hechaEn: new Date().toISOString(),
+          notas: ((t.notas ? t.notas + "\n" : "") + "Pasada al pedido " + p.numero).slice(0, 2000)}).catch(function(){});
+      }
+      return p;
+    }, function(e){ fichaEstado((e && e.message) || "No se pudo guardar.", true); throw {silencio: true}; })
+      .then(function(p){ guardandoFicha = false; $("pGuardar").disabled = false; return p; },
+        function(e){ guardandoFicha = false; $("pGuardar").disabled = false; throw e; });
+  }
+  $("frmPed").addEventListener("submit", function(e){
+    e.preventDefault();
+    guardarFicha().then(function(p){ cerrarFicha(); estado("Pedido " + p.numero + " guardado."); }, function(){});
+  });
+  var borrarPedArmado = false;
+  $("pBorrar").addEventListener("click", function(){
+    if(!fp || !fp.id) return;
+    if(!borrarPedArmado){ borrarPedArmado = true; this.textContent = "Tocá de nuevo: se borra con sus facturas y cobros"; return; }
+    var id = fp.id;
+    borrarPedidoApi(id).then(function(){ cerrarFicha(); estado("Pedido eliminado."); }, function(e){ fichaEstado(e.message, true); });
+  });
+  function agregarMovDesdeFicha(tipo){
+    var abrir_ = function(){ var p = pedPorId(fp.id); if(p) abrirMov(p, tipo); };
+    if(fp.id) abrir_(); else guardarFicha().then(abrir_, function(){});
+  }
+  $("pAddFac").addEventListener("click", function(){ agregarMovDesdeFicha("factura"); });
+  $("pAddCob").addEventListener("click", function(){ agregarMovDesdeFicha("cobro"); });
+
+  /* ---------- Facturas y cobros ---------- */
+  var dlgM = $("dlgMov"), fm = null, borrarMovArmado = false;
+  function abrirMov(p, tipo, m){
+    fm = {p: p, tipo: tipo, m: m || null};
+    var t = totales(p);
+    dlgM.className = tipo === "factura" ? "fac" : "cob";
+    $("mTitulo").textContent = (m ? "Editar " : "Nueva ") + (tipo === "factura" ? "factura" : "cobro").replace("Nueva cobro", "Nuevo cobro");
+    if(!m) $("mTitulo").textContent = tipo === "factura" ? "Nueva factura" : "Nuevo cobro";
+    $("mSub").textContent = p.numero + " · " + (p.cliente || "") + " · " + prodCorto(p) + " · Total " + plata(t.total);
+    $("mFecha").value = m ? m.fecha : hoy();
+    $("mMonto").value = m ? m.monto : (tipo === "factura" ? t.aFacturar : t.saldo) || "";
+    $("mNotas").value = m ? (m.notas || "") : "";
+    if(tipo === "factura"){
+      $("mComp").value = m ? (m.comprobante || "Factura C") : "Factura C";
+      $("mNumFac").value = m ? (m.numero || "") : "";
+    } else {
+      $("mConc").value = m ? (m.comprobante || "Pago parcial") : (t.cobrado === 0 && idxEtapa(p.etapa) < I_ENTREGADO ? "Seña" : "Saldo / pago total");
+      $("mMedio").value = m ? (m.medio || "Transferencia") : "Transferencia";
+      $("mRecibo").value = m ? (m.numero || "") : "";
+    }
+    borrarMovArmado = false; $("mBorrar").textContent = "Eliminar"; $("mBorrar").hidden = !m;
+    $("mEstado").textContent = ""; $("mEstado").className = "pEstado";
+    if(dlgM.showModal) dlgM.showModal(); else dlgM.setAttribute("open", "");
+    $("mMonto").focus();
+  }
+  function cerrarMov(){ if(dlgM.close) dlgM.close(); else dlgM.removeAttribute("open"); fm = null; }
+  $("mCancelar").addEventListener("click", cerrarMov);
+  $("frmMov").addEventListener("submit", function(e){
+    e.preventDefault(); if(!fm) return;
+    var monto = +$("mMonto").value;
+    if(!(monto > 0)){ $("mEstado").textContent = "Falta el monto."; $("mEstado").className = "pEstado error"; return; }
+    if(!$("mFecha").value){ $("mEstado").textContent = "Falta la fecha."; $("mEstado").className = "pEstado error"; return; }
+    var m = {id: fm.m ? fm.m.id : "", creado: fm.m ? fm.m.creado : "", pedido: fm.p.id, tipo: fm.tipo, fecha: $("mFecha").value, monto: monto, notas: $("mNotas").value.trim()};
+    if(fm.tipo === "factura"){ m.comprobante = $("mComp").value; m.numero = $("mNumFac").value.trim(); m.medio = ""; }
+    else { m.comprobante = $("mConc").value; m.medio = $("mMedio").value; m.numero = $("mRecibo").value.trim(); }
+    $("mGuardar").disabled = true; $("mEstado").textContent = "Guardando…"; $("mEstado").className = "pEstado";
+    var p = fm.p;
+    guardarMovApi(m).then(function(){
+      cerrarMov(); if(fichaAbierta()) pintarFichaDinero();
+      estado((m.tipo === "factura" ? "Factura" : "Cobro") + " de " + p.numero + " guardado.");
+    }, function(err){ $("mEstado").textContent = err.message; $("mEstado").className = "pEstado error"; })
+      .then(function(){ $("mGuardar").disabled = false; });
+  });
+  $("mBorrar").addEventListener("click", function(){
+    if(!fm || !fm.m) return;
+    if(!borrarMovArmado){ borrarMovArmado = true; this.textContent = "Tocá de nuevo para eliminar"; return; }
+    borrarMovApi(fm.m.id).then(function(){ cerrarMov(); if(fichaAbierta()) pintarFichaDinero(); },
+      function(err){ $("mEstado").textContent = err.message; $("mEstado").className = "pEstado error"; });
+  });
+
+  /* ---------- Leer un pedido dictado ---------- */
+  // "100 libretas A6 para la Escuela 5, entrega el 20/11" → cliente, producto, cantidad y entrega.
+  // Lo que no se entiende queda en el detalle para completarlo después.
+  var STOP = {con:1, de:1, del:1, para:1, x:1, cm:1, y:1, la:1, el:1, los:1, las:1, a:1, en:1, por:1, tapa:1, tapas:1, color:1, logo:1};
+  function raiz(w){ w = sinAcentos(w); if(w === "lapices") return "lapiz"; return w.length > 4 ? w.replace(/(es|s)$/, "") : w.replace(/s$/, ""); }
+  function palabras(s){ return sinAcentos(s).replace(/\(.*?\)/g, " ").split(/[^a-z0-9+]+/).filter(function(w){ return w && !STOP[w] && !/^\d+([.,]\d+)?$/.test(w); }).map(raiz); }
+  function interpretarPedido(texto){
+    var n = sinAcentos(texto), toks = {};
+    palabras(texto).forEach(function(w){ toks[w] = true; });
+    // Producto: la primera palabra del nombre (libreta, cuaderno, lapicera…) tiene que estar; suma cada coincidencia.
+    var mejor = null, pts = 0;
+    catalogo.forEach(function(p){
+      if(n.indexOf(sinAcentos(p.codigo)) >= 0){ mejor = p; pts = 99; return; }
+      var ws = palabras(p.producto); if(!ws.length || !toks[ws[0]]) return;
+      // Cada palabra que coincide suma; cada una que no está en el texto resta (así "libretas A6" no elige la laminada).
+      var s = 1; ws.slice(1).forEach(function(w){ s += toks[w] ? 1 : -0.5; });
+      if(s > pts || !mejor){ pts = s; mejor = p; }
+    });
+    if(!mejor && /\b3d\b|impresion 3d|impreso en 3d/.test(n)) mejor = prodDe("3D-01");
+    // Cantidad: el número pegado al producto, o "x 100", o "100 unidades".
+    var cant = 0, m;
+    if(mejor){
+      var w0 = palabras(mejor.producto)[0];
+      var rx = new RegExp("(\\d[\\d.]*)\\s+(?:\\w+\\s+){0,1}" + w0.slice(0, Math.max(4, w0.length - 1)));
+      if((m = n.match(rx))) cant = +m[1].replace(/\./g, "");
+    }
+    if(!cant && (m = n.match(/(?:\bx\s*|\bpor\s+)(\d[\d.]*)\b|(\d[\d.]*)\s*(?:unidades|u\b|unid)/))) cant = +(m[1] || m[2]).replace(/\./g, "");
+    // Cliente: uno de la lista que aparezca en el texto; si no, lo que sigue a "para".
+    var cli = "";
+    clientes.forEach(function(c){ var k = sinAcentos(c.nombre); if(k.length > 2 && n.indexOf(k) >= 0 && k.length > cli.length) cli = c.nombre; });
+    if(!cli && (m = texto.match(/\bpara\s+(?:el|la|los|las)?\s*([^,.;\n]+?)(?=\s*(?:,|\.|;|$|\bentrega|\bpara el\b|\bpara la\b|\bque\b|\bcon\b|\bsena\b|\bseña\b))/i))) cli = m[1].trim();
+    // Se corta lo que no es nombre: fechas, días, etapas y cantidades que quedaron pegadas.
+    cli = cli.replace(/\s+(?:(?:para\s+)?(?:el|la)\s+)?(?:entrega\w*|aprobad\w*|presupuest\w*|confirmad\w*|hoy|mañana|manana|pasado|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo|\d{1,2}\/\d{1,2}|x\s*\d+|\d+\s*(?:unidades|u)\b).*$/i, "").trim();
+    if(/^\d|^(el|la)?\s*(lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo|hoy|mañana|manana)\b/i.test(cli)) cli = "";
+    if(cli) cli = cli.charAt(0).toUpperCase() + cli.slice(1);
+    // Entrega: misma lectura de fechas que las tareas ("el jueves", "20/11", "mañana").
+    var entrega = unaTarea(texto, new Date(), "").vence;
+    var etapa = /\baprobad|\bconfirm/.test(n) ? "aprobado" : /presupuest/.test(n) ? "presupuesto" : "consulta";
+    var pc = mejor && cant ? precioCatalogo(mejor.codigo, cant) : null;
+    return {cliente: cli, codigo: mejor ? mejor.codigo : "", producto: mejor ? mejor.producto : "", cantidad: cant || "",
+      precioUnit: pc ? pc.precio : "", entrega: entrega, etapa: etapa};
+  }
+  function guardarRapido(texto, porVoz){
+    texto = String(texto || "").trim();
+    if(!texto) return;
+    if(!sabelotodoOk){ rapEstado("Falta actualizar el programa de la planilla para usar los pedidos."); return; }
+    var d = interpretarPedido(texto), c = clientePorNombre(d.cliente);
+    var cant = +d.cantidad || 0, unit = +d.precioUnit || 0;
+    var p = {cliente: c ? c.nombre : d.cliente, clienteId: c ? c.id : "", codigo: d.codigo, producto: d.producto, detalle: texto,
+      cantidad: cant, precioLista: unit, precioUnit: unit, descuento: 0, total: calcTotal(unit, cant, 0),
+      etapa: d.etapa, historial: [{e: d.etapa, f: hoy()}], fechaPedido: hoy(), entrega: d.entrega, noFactura: false,
+      notas: "", rapido: true, vistos: {}};
+    $("rapGuardar").disabled = true; rapEstado("Guardando…");
+    guardarPedidoApi(p).then(function(n){
+      $("rapTxt").value = "";
+      var res = [n.cliente || "sin cliente", n.producto ? prodCorto(n) : "sin producto", n.entrega ? "entrega " + fechaCorta(n.entrega) : "sin entrega"].join(" · ");
+      rapEstado("Guardado " + n.numero + ": " + res + ". Completalo cuando puedas.");
+      aviso("Pedido rápido " + n.numero + " guardado", function(){
+        borrarPedidoApi(n.id).then(function(){ $("rapTxt").value = texto; rapEstado("Deshecho. El texto quedó en la caja."); });
+      });
+    }, function(e){ rapEstado((e.message || "No se pudo guardar.") + " El texto sigue en la caja."); })
+      .then(function(){ $("rapGuardar").disabled = false; });
+  }
+  function rapEstado(t){ $("rapEstado").textContent = t || ""; }
+  $("rapGuardar").addEventListener("click", function(){ guardarRapido($("rapTxt").value, false); });
+  $("rapTxt").addEventListener("keydown", function(e){ if(e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); guardarRapido(this.value, false); } });
+  $("pedNuevo").addEventListener("click", function(){ abrirPedido(null); });
+  $("pedOjo").addEventListener("click", alternarMontos);
+  // Dictado del pedido rápido: tocar, hablar, y al callar ~2 s se guarda solo (con Deshacer).
+  (function(){
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return;
+    var ANDROID = /Android/i.test(navigator.userAgent), rec = null, oyendo = false, base = "", fin = "", silencio = null, ok = true, voz = false;
+    $("rapMic").hidden = false;
+    function pintar(on){ oyendo = on; $("rapMic").classList.toggle("oyendo", on); $("rapBox").classList.toggle("oyendo", on);
+      $("rapMic").setAttribute("aria-label", on ? "Terminar de dictar" : "Dictar un pedido rápido"); if(on) rapEstado("Escuchando… al terminar de hablar se guarda solo."); }
+    function terminar(){ clearTimeout(silencio); if(rec){ try { rec.stop(); } catch(e){} } }
+    $("rapMic").addEventListener("click", function(){
+      if(oyendo){ terminar(); return; }
+      rec = new SR(); rec.lang = "es-AR"; rec.interimResults = true; rec.continuous = !ANDROID;
+      base = $("rapTxt").value.trim(); fin = ""; ok = true; voz = false;
+      rec.onstart = function(){ pintar(true); silencio = setTimeout(terminar, 6000); };
+      rec.onresult = function(ev){
+        var prov = "";
+        for(var i = ev.resultIndex; i < ev.results.length; i++){
+          if(ev.results[i].isFinal) fin += (fin ? " " : "") + ev.results[i][0].transcript.trim(); else prov += ev.results[i][0].transcript;
+        }
+        voz = true; $("rapTxt").value = [base, fin, prov.trim()].filter(String).join(" ");
+        clearTimeout(silencio); silencio = setTimeout(terminar, 2200);
+      };
+      rec.onerror = function(ev){ if(ev.error !== "aborted" && ev.error !== "no-speech"){ ok = false; rapEstado("No se pudo usar el micrófono (" + ev.error + ")."); } };
+      rec.onend = function(){ clearTimeout(silencio); pintar(false); rec = null;
+        var t = $("rapTxt").value.trim();
+        if(ok && voz && t && t !== base) guardarRapido(t, true); else if(ok) rapEstado(""); };
+      try { rec.start(); } catch(e){ rapEstado("No se pudo iniciar el dictado."); }
+    });
+  })();
+
+  /* ---------- Pasar una tarea de Sabelotodo a pedido ---------- */
+  function tareaAPedido(t){
+    var texto = t.titulo + (t.notas ? "\n" + t.notas : "");
+    var d = interpretarPedido(texto);
+    var c = clientePorNombre(d.cliente);
+    abrirPedido(null, {cliente: c ? c.nombre : d.cliente, codigo: d.codigo, cantidad: d.cantidad, precioUnit: d.precioUnit,
+      detalle: texto, entrega: t.vence || d.entrega, etapa: d.etapa, tareaOrigen: t.id,
+      fechaPedido: t.creada ? iso(new Date(t.creada)) : hoy()});
+    fichaEstado("Revisá los datos que tomé de la tarea. Al guardar, la tarea queda hecha.");
+  }
+  $("ePedido").addEventListener("click", function(){
+    var t = tareas.filter(function(x){ return x.id === editId; })[0];
+    if(!t) return; cerrar(); tareaAPedido(t);
+  });
+  $("eArea").addEventListener("change", function(){ $("ePedido").hidden = this.value !== "laboral"; });
+
   /* ---------- Arranque ---------- */
+  try {
+    var copiaP = JSON.parse(localStorage.getItem("agendaCopia") || "null");
+    if(copiaP && copiaP.s){ pedidos = copiaP.p || []; movs = copiaP.m || []; clientes = copiaP.c || []; catalogo = copiaP.k || []; sabelotodoOk = true; }
+  } catch(e){}
+  pintarOjos(); pintarClientes();
   render();
   refrescar(false);
   // Se actualiza solo cada minuto mientras está a la vista, y al volver a la pestaña.
