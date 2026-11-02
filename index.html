@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#0E5E6F">
 <style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Agenda personal · Adrián Cáceres</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="icono-192.png">
+<meta name="apple-mobile-web-app-title" content="Agenda">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
 /* Agenda v2.6: pedidos de Sabelotodo. Pantalla «Pedidos» con una columna por etapa, ficha de cada pedido
@@ -2499,5 +2503,6 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
   window.addEventListener("online", function(){ refrescar(true); });
 })();
 </script>
+<script>if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}</script>
 </body>
 </html>
