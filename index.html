@@ -12,7 +12,10 @@
 <meta name="apple-mobile-web-app-title" content="Agenda">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.7.4: cada total del informe se compara con el período anterior del mismo largo (antes, diferencia y %).
+/* Agenda v2.8: «💰 Cobro del cliente»: un solo cobro (monto total o %) que se reparte entre varios pedidos del
+   mismo cliente, con la opción de cargar la factura igual (mismo número y mismos montos por producto).
+   En la planilla quedan un cobro y una factura por pedido, como siempre: la planilla no cambia.
+   Agenda v2.7.4: cada total del informe se compara con el período anterior del mismo largo (antes, diferencia y %).
    Agenda v2.7.3: botón «🖨 Imprimir» en el informe: hoja limpia (o PDF) con encabezado, período y fecha de emisión.
    Agenda v2.7.2: el informe suma el saldo por cliente (lo que debe hoy de los pedidos del período, facturado y
    cobrado en el período, y lo que debía al cierre). Tabla en PC, tarjetas en celular.
@@ -666,6 +669,23 @@ fieldset.bloque h4{margin:4px 0 0;font-family:var(--display);font-size:.85rem;le
 #dlgMov .soloFac,#dlgMov .soloCob{display:none}
 #dlgMov.fac .soloFac,#dlgMov.cob .soloCob{display:flex}
 
+/* v2.8: cobro del cliente repartido entre varios pedidos */
+#dlgCob{width:min(640px,calc(100% - 20px))}
+@media (max-width:640px){ #dlgCob{width:100%;max-width:100%;max-height:100%;height:100%;margin:0;border-radius:0} }
+#dlgCob form{display:flex;flex-direction:column;gap:10px}
+#dlgCob form > .campo{flex:0 0 auto}
+.cobLista{display:flex;flex-direction:column;gap:5px}
+.cobFila{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:6px 10px;background:var(--surface);cursor:pointer}
+.cobFila.off{opacity:.55}
+.cobFila input{width:18px;height:18px;flex:0 0 auto}
+.cobFila .d{flex:1 1 150px;min-width:0;overflow-wrap:anywhere}
+.cobFila .d small{display:block;color:var(--muted);font-family:var(--mono);font-size:.78rem}
+.cobFila .m{font-family:var(--mono);font-weight:700;color:var(--sab)}
+.cobPct{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cobPct button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;cursor:pointer;font-family:var(--mono);font-weight:700;color:var(--ink)}
+.cobPct button[aria-pressed=true]{background:var(--sab);color:#fff;border-color:transparent}
+.cobFac[hidden]{display:none}
+
 /* Montos ocultos: los textos se reemplazan por puntos y los campos se ven borrosos hasta tocarlos */
 body.ocultos input.monto:not(:focus){filter:blur(6px)}
 
@@ -747,7 +767,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
   <section class="pedCab" id="pedCab" hidden>
     <div class="arriba">
       <h2>Pedidos Sabelotodo</h2>
-      <div class="der"><button type="button" class="ojo" id="pedOjo"></button><button class="btn sec" type="button" id="pedInf">📊 Informe</button><button class="btn" type="button" id="pedNuevo">+ Nuevo pedido</button></div>
+      <div class="der"><button type="button" class="ojo" id="pedOjo"></button><button class="btn sec" type="button" id="pedCob">💰 Cobro del cliente</button><button class="btn sec" type="button" id="pedInf">📊 Informe</button><button class="btn" type="button" id="pedNuevo">+ Nuevo pedido</button></div>
     </div>
     <div class="rapidoBox" id="rapBox">
       <label><span>Pedido rápido: dictalo o escribilo y completalo después</span>
@@ -873,7 +893,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
       <button type="button" class="btn sec chico" id="pAddFac">+ Factura</button>
       <h4>Cobros</h4>
       <div id="pCobros" class="movs"></div>
-      <button type="button" class="btn sec chico" id="pAddCob">+ Cobro</button>
+      <span class="fila"><button type="button" class="btn sec chico" id="pAddCob">+ Cobro</button><button type="button" class="btn sec chico" id="pAddCobCli">💰 Cobro junto con otros pedidos del cliente</button></span>
     </fieldset>
     <div id="pEstado" class="pEstado" role="status" aria-live="polite"></div>
     <div class="acciones">
@@ -912,6 +932,49 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
       <span class="fila">
         <button class="btn sec" type="button" id="mCancelar">Cancelar</button>
         <button class="btn" type="submit" id="mGuardar">Guardar</button>
+      </span>
+    </div>
+  </form>
+</dialog>
+<dialog id="dlgCob">
+  <form id="frmCob" novalidate>
+    <div class="pedTop">
+      <h3>Cobro del cliente</h3>
+      <button type="button" class="ojo" id="cOjo"></button>
+    </div>
+    <p class="ayudaP">Un solo pago que abarca varios pedidos: ponés el total o el porcentaje y se reparte solo.</p>
+    <label class="campo"><span>Cliente</span><input id="cCliente" list="dlClientes" autocomplete="off" placeholder="Ej.: Fer Pilar"></label>
+    <div id="cLista" class="cobLista"></div>
+    <div class="fila">
+      <label class="campo"><span>Monto total cobrado</span><input id="cMonto" class="monto" type="number" min="0" step="0.01" inputmode="decimal"></label>
+      <label class="campo chico"><span>o porcentaje</span><input id="cPct" type="number" min="0" max="100" step="1" inputmode="decimal" placeholder="%"></label>
+    </div>
+    <div class="cobPct" id="cPctBotones" role="group" aria-label="Porcentaje rápido">
+      <button type="button" data-pct="25" aria-pressed="false">25 %</button>
+      <button type="button" data-pct="50" aria-pressed="false">50 %</button>
+      <button type="button" data-pct="100" aria-pressed="false">Todo</button>
+    </div>
+    <p class="ayudaP" id="cReparto"></p>
+    <div class="fila">
+      <label class="campo"><span>Fecha</span><input id="cFecha" type="date"></label>
+      <label class="campo"><span>Concepto</span><select id="cConc"><option>Seña</option><option>Pago parcial</option><option>Saldo / pago total</option></select></label>
+    </div>
+    <div class="fila">
+      <label class="campo"><span>Medio de pago</span><select id="cMedio"><option>Transferencia</option><option>Efectivo</option><option>Mercado Pago</option><option>Cheque</option><option>Otro</option></select></label>
+      <label class="campo"><span>N.º de recibo</span><input id="cRecibo" placeholder="Vacío = sin recibo" autocomplete="off"></label>
+    </div>
+    <label class="chk"><input type="checkbox" id="cFacturar" checked> Facturar lo mismo (misma factura, mismos montos por producto)</label>
+    <div class="fila cobFac" id="cFacBox">
+      <label class="campo"><span>Comprobante</span><select id="cComp"><option>Factura C</option><option>Factura B</option><option>Factura A</option><option>Otro</option></select></label>
+      <label class="campo"><span>N.º de factura</span><input id="cNumFac" placeholder="00001-00000123" autocomplete="off"></label>
+    </div>
+    <label class="campo"><span>Notas</span><input id="cNotas" maxlength="400"></label>
+    <div id="cEstado" class="pEstado" role="status" aria-live="polite"></div>
+    <div class="acciones">
+      <span></span>
+      <span class="fila">
+        <button class="btn sec" type="button" id="cCancelar">Cancelar</button>
+        <button class="btn" type="submit" id="cGuardar">Guardar cobro</button>
       </span>
     </div>
   </form>
@@ -1854,7 +1917,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
   try { verMontos = localStorage.getItem("verMontos") === "si"; } catch(e){}
   function pintarOjos(){
     document.body.classList.toggle("ocultos", !verMontos);
-    ["pedOjo", "pOjo"].forEach(function(id){
+    ["pedOjo", "pOjo", "cOjo"].forEach(function(id){
       var b = $(id); if(!b) return;
       b.textContent = verMontos ? "🙈 Ocultar montos" : "👁 Ver montos";
       b.setAttribute("aria-pressed", verMontos ? "true" : "false");
@@ -1864,6 +1927,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     verMontos = !verMontos;
     try { localStorage.setItem("verMontos", verMontos ? "si" : "no"); } catch(e){}
     pintarOjos(); render(); if(fichaAbierta()) pintarFichaDinero();
+    if(cobAbierto()) pintarCobro();
   }
   function plataTxt(n){ n = Math.round((+n || 0) * 100) / 100; return "$ " + n.toLocaleString("es-AR", {maximumFractionDigits: 2}); }
   function plata(n){ return verMontos ? plataTxt(n) : "$ •••••"; }
@@ -2524,6 +2588,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     b.textContent = informe ? "← Volver a pedidos" : "📊 Informe";
     b.setAttribute("aria-pressed", informe ? "true" : "false");
     $("pedNuevo").hidden = informe;
+    $("pedCob").hidden = informe;
     $("rapBox").hidden = informe;
   }
   $("pedInf").addEventListener("click", function(){ informe = !informe; render(); });
@@ -2783,6 +2848,168 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     if(!borrarMovArmado){ borrarMovArmado = true; this.textContent = "Tocá de nuevo para eliminar"; return; }
     borrarMovApi(fm.m.id).then(function(){ cerrarMov(); if(fichaAbierta()) pintarFichaDinero(); },
       function(err){ $("mEstado").textContent = err.message; $("mEstado").className = "pEstado error"; });
+  });
+
+  /* ---------- v2.8: Cobro del cliente (un pago repartido entre varios pedidos) ---------- */
+  // Por debajo se guarda un cobro (y, si se pide, una factura) por pedido, así la planilla, los saldos
+  // y el informe siguen igual. Con monto: se reparte en proporción a lo que debe cada pedido.
+  // Con porcentaje: a cada pedido le toca ese % de su total (sin pasarse de lo que debe).
+  var fc = null;
+  function r2(n){ return Math.round((+n || 0) * 100) / 100; }
+  function cobAbierto(){ return !!$("dlgCob").open; }
+  function pedidosConSaldo(nombre){
+    var k = sinAcentos(String(nombre || "").trim());
+    if(!k) return [];
+    return pedidos.filter(function(p){
+      return !archivado(p) && sinAcentos(String(p.cliente || "").trim()) === k && totales(p).saldo >= 1;
+    }).sort(function(a, b){ return String(a.numero).localeCompare(String(b.numero)); });
+  }
+  // Devuelve [{p, cobro, factura}] según lo marcado y lo cargado. factura = 0 si no se factura.
+  function repartoCobro(){
+    var marcados = fc.lista.filter(function(p){ return fc.sel[p.id]; });
+    var saldos = marcados.map(function(p){ return totales(p).saldo; });
+    var debe = r2(saldos.reduce(function(a, b){ return a + b; }, 0));
+    var partes = [];
+    if(fc.pct != null){
+      partes = marcados.map(function(p, i){ return Math.min(saldos[i], r2((+p.total || 0) * fc.pct / 100)); });
+    } else {
+      var monto = Math.min(r2(+$("cMonto").value || 0), debe), resto = monto;
+      partes = marcados.map(function(p, i){
+        if(i === marcados.length - 1) return r2(resto);
+        var v = debe ? Math.min(saldos[i], r2(monto * saldos[i] / debe)) : 0;
+        resto = r2(resto - v); return v;
+      });
+    }
+    var facturar = $("cFacturar").checked;
+    return {debe: debe, filas: marcados.map(function(p, i){
+      var t = totales(p);
+      return {p: p, cobro: partes[i], factura: facturar && !p.noFactura ? Math.min(partes[i], t.aFacturar) : 0};
+    })};
+  }
+  function abrirCobroCliente(nombre){
+    if(!sabelotodoOk){ estado("Para usar los pedidos falta actualizar el programa de la planilla.", true); return; }
+    fc = {sel: {}, pct: null, plan: null, concManual: false};
+    $("cCliente").value = nombre || "";
+    $("cMonto").value = ""; $("cPct").value = "";
+    $("cFecha").value = hoy(); $("cMedio").value = "Transferencia"; $("cRecibo").value = "";
+    $("cFacturar").checked = true; $("cComp").value = "Factura C"; $("cNumFac").value = ""; $("cNotas").value = "";
+    $("cEstado").textContent = ""; $("cEstado").className = "pEstado";
+    cargarListaCobro();
+    pintarOjos();
+    var d = $("dlgCob"); if(d.showModal) d.showModal(); else d.setAttribute("open", "");
+    (nombre ? $("cMonto") : $("cCliente")).focus();
+  }
+  function cargarListaCobro(){
+    fc.lista = pedidosConSaldo($("cCliente").value);
+    fc.sel = {}; fc.lista.forEach(function(p){ fc.sel[p.id] = true; });
+    fc.plan = null;
+    pintarCobro();
+  }
+  function pintarCobro(){
+    if(!fc) return;
+    var L = $("cLista"); L.textContent = "";
+    var nombre = $("cCliente").value.trim();
+    if(!nombre) L.appendChild(el("p", "ayudaP", "Elegí el cliente y aparecen sus pedidos con saldo."));
+    else if(!fc.lista.length) L.appendChild(el("p", "ayudaP", "«" + nombre + "» no tiene pedidos con saldo pendiente."));
+    var R = repartoCobro(), parte = {};
+    R.filas.forEach(function(f){ parte[f.p.id] = f; });
+    fc.lista.forEach(function(p){
+      var t = totales(p), f = parte[p.id];
+      var fila = el("label", "cobFila" + (fc.sel[p.id] ? "" : " off"));
+      var c = el("input"); c.type = "checkbox"; c.checked = !!fc.sel[p.id];
+      c.addEventListener("change", function(){ fc.sel[p.id] = c.checked; fc.plan = null; pintarCobro(); });
+      fila.appendChild(c);
+      var d = el("span", "d", p.numero + " · " + prodCorto(p));
+      d.appendChild(el("small", "", "Total " + plata(t.total) + " · debe " + plata(t.saldo) + (p.noFactura ? " · no se factura" : "")));
+      fila.appendChild(d);
+      fila.appendChild(el("span", "m", f && f.cobro > 0 ? "→ " + plata(f.cobro) : ""));
+      L.appendChild(fila);
+    });
+    // Monto y porcentaje se completan entre sí.
+    var suma = r2(R.filas.reduce(function(a, f){ return a + f.cobro; }, 0));
+    if(fc.pct != null) $("cMonto").value = suma || "";
+    Array.prototype.forEach.call($("cPctBotones").querySelectorAll("button"), function(b){
+      b.setAttribute("aria-pressed", fc.pct != null && +b.dataset.pct === fc.pct ? "true" : "false");
+    });
+    var fac = r2(R.filas.reduce(function(a, f){ return a + f.factura; }, 0));
+    var msg = "", err = false, pedido = +$("cMonto").value || 0;
+    if(R.filas.length && fc.pct == null && pedido > R.debe + 0.005){ msg = "El monto supera lo que debe en total (" + plata(R.debe) + "). Se cobraría solo eso."; err = true; }
+    else if(R.filas.length && suma > 0){
+      var queda = r2(R.debe - suma);
+      msg = "Se reparte en " + R.filas.filter(function(f){ return f.cobro > 0; }).length + " pedido(s). " +
+        (queda >= 1 ? "Queda debiendo " + plata(queda) + "." : "Queda todo cobrado.");
+      if($("cFacturar").checked){
+        if(!fac) msg += " Ninguno de estos pedidos queda para facturar.";
+        else if(Math.abs(fac - suma) >= 1) msg += " Factura por " + plata(fac) + " (algunos ya estaban facturados o no se facturan).";
+      }
+    }
+    $("cReparto").textContent = msg; $("cReparto").className = "ayudaP" + (err ? " error" : "");
+    $("cFacBox").hidden = !$("cFacturar").checked;
+    // Concepto sugerido, mientras no lo cambie a mano.
+    if(!fc.concManual && R.filas.length){
+      var cobradoAntes = R.filas.some(function(f){ return totales(f.p).cobrado > 0; });
+      var entregados = R.filas.every(function(f){ return idxEtapa(f.p.etapa) >= I_ENTREGADO; });
+      $("cConc").value = suma > 0 && Math.abs(R.debe - suma) < 1 ? "Saldo / pago total" : (!cobradoAntes && !entregados ? "Seña" : "Pago parcial");
+    }
+  }
+  function cerrarCobro(){ var d = $("dlgCob"); if(d.close) d.close(); else d.removeAttribute("open"); fc = null; }
+  function cobroEstado(t, error){ $("cEstado").textContent = t || ""; $("cEstado").className = "pEstado" + (error ? " error" : ""); }
+  $("cCliente").addEventListener("input", function(){ if(fc) cargarListaCobro(); });
+  $("cMonto").addEventListener("input", function(){ if(!fc) return; fc.pct = null; $("cPct").value = ""; fc.plan = null; pintarCobro(); });
+  $("cPct").addEventListener("input", function(){
+    if(!fc) return;
+    var v = this.value === "" ? null : Math.min(100, Math.max(0, +this.value || 0));
+    fc.pct = v; fc.plan = null; if(v == null) $("cMonto").value = ""; pintarCobro();
+  });
+  $("cPctBotones").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(!b || !fc) return;
+    fc.pct = +b.dataset.pct; $("cPct").value = fc.pct; fc.plan = null; pintarCobro();
+  });
+  $("cFacturar").addEventListener("change", function(){ if(fc){ fc.plan = null; pintarCobro(); } });
+  $("cConc").addEventListener("change", function(){ if(fc) fc.concManual = true; });
+  ["cFecha", "cMedio", "cRecibo", "cComp", "cNumFac", "cNotas"].forEach(function(id){
+    $(id).addEventListener("input", function(){ if(fc) fc.plan = null; });
+  });
+  $("cOjo").addEventListener("click", alternarMontos);
+  $("cCancelar").addEventListener("click", cerrarCobro);
+  $("pedCob").addEventListener("click", function(){ abrirCobroCliente(""); });
+  $("pAddCobCli").addEventListener("click", function(){
+    var abrir_ = function(){ var p = pedPorId(fp.id); if(p) abrirCobroCliente(p.cliente); };
+    if(fp.id) abrir_(); else guardarFicha().then(abrir_, function(){});
+  });
+  $("frmCob").addEventListener("submit", function(e){
+    e.preventDefault(); if(!fc) return;
+    if(!$("cFecha").value){ cobroEstado("Falta la fecha.", true); return; }
+    // El plan queda fijo: si se corta a mitad de camino, «Guardar» de nuevo sigue con lo que faltaba.
+    if(!fc.plan){
+      var R = repartoCobro(), filas = R.filas.filter(function(f){ return f.cobro > 0; });
+      if(!filas.length){ cobroEstado(fc.lista.length ? "Falta el monto o el porcentaje." : "Elegí un cliente con pedidos con saldo.", true); return; }
+      var nums = filas.map(function(f){ return f.p.numero; }).join(", ");
+      var notas = ($("cNotas").value.trim() ? $("cNotas").value.trim() + " · " : "") + (filas.length > 1 ? "Cobro conjunto: " + nums : "");
+      var base = {fecha: $("cFecha").value, notas: notas.slice(0, 500)};
+      var pasos = [];
+      filas.forEach(function(f){
+        pasos.push(Object.assign({pedido: f.p.id, tipo: "cobro", monto: f.cobro, comprobante: $("cConc").value,
+          medio: $("cMedio").value, numero: $("cRecibo").value.trim()}, base));
+        if(f.factura > 0) pasos.push(Object.assign({pedido: f.p.id, tipo: "factura", monto: f.factura, comprobante: $("cComp").value,
+          medio: "", numero: $("cNumFac").value.trim()}, base));
+      });
+      fc.plan = {pasos: pasos, hechos: 0, nPed: filas.length, nums: nums, conFac: pasos.length > filas.length};
+    }
+    var plan = fc.plan;
+    $("cGuardar").disabled = true; cobroEstado("Guardando…");
+    function siguiente(){
+      if(plan.hechos >= plan.pasos.length) return Promise.resolve();
+      cobroEstado("Guardando " + (plan.hechos + 1) + " de " + plan.pasos.length + "…");
+      return guardarMovApi(plan.pasos[plan.hechos]).then(function(){ plan.hechos++; return siguiente(); });
+    }
+    siguiente().then(function(){
+      cerrarCobro(); if(fichaAbierta()) pintarFichaDinero();
+      estado("Cobro guardado en " + plan.nPed + " pedido(s): " + plan.nums + (plan.conFac ? ", con su factura." : "."));
+    }, function(err){
+      cobroEstado((err && err.message || "No se pudo guardar.") + " Se guardaron " + plan.hechos + " de " + plan.pasos.length +
+        ". Tocá «Guardar cobro» de nuevo para seguir con lo que falta.", true);
+    }).then(function(){ $("cGuardar").disabled = false; });
   });
 
   /* ---------- Leer un pedido dictado ---------- */
