@@ -12,7 +12,8 @@
 <meta name="apple-mobile-web-app-title" content="Agenda">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.7.2: el informe suma el saldo por cliente (lo que debe hoy de los pedidos del período, facturado y
+/* Agenda v2.7.3: botón «🖨 Imprimir» en el informe: hoja limpia (o PDF) con encabezado, período y fecha de emisión.
+   Agenda v2.7.2: el informe suma el saldo por cliente (lo que debe hoy de los pedidos del período, facturado y
    cobrado en el período, y lo que debía al cierre). Tabla en PC, tarjetas en celular.
    Agenda v2.7.1: el informe suma los pedidos por etapa (tomados en el período según su etapa de hoy,
    y movimiento de etapas en el período).
@@ -514,6 +515,32 @@ dialog h3{color:var(--accent)}
 .infRango label{display:flex;gap:6px;align-items:center;font-family:var(--display);font-weight:600;font-size:.9rem}
 .infRango select{border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);padding:7px 8px;font:inherit;font-family:var(--body);font-weight:500}
 .infRango select:focus{outline:none;border-color:var(--accent-2);box-shadow:0 0 0 3px var(--glow)}
+.infCabeza{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.infCabeza .btn.sec{background:var(--surface);color:var(--sab);border:1px solid var(--line);box-shadow:none}
+.infImpCab,#impHoja{display:none}
+/* v2.7.3: hoja impresa (o PDF). Solo se imprime la copia del informe, en colores claros aunque el tablero esté oscuro. */
+@media print{
+  @page{size:A4;margin:12mm}
+  body.impInf{background:#fff!important}
+  body.impInf > *:not(#impHoja){display:none!important}
+  #impHoja{display:flex!important;flex-direction:column;gap:10px;font-size:10pt;color:#14222a;
+    --surface:#fff; --bg:#fff; --bg2:#fff; --sunk:#edf1f2; --ink:#14222a; --muted:#56656b; --line:#c9d3d6; --sab:#8E1B2E; --sab-2:#C2394F; --shadow:none;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #impHoja .infPer,#impHoja .btn{display:none!important}
+  #impHoja .infImpCab{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:2px solid var(--sab);padding-bottom:4px;font-family:var(--display)}
+  #impHoja .infImpCab .emitido{font-size:8.5pt;color:var(--muted);font-family:var(--body)}
+  #impHoja .pkpis{grid-template-columns:repeat(4,1fr)}
+  #impHoja .pkpi .n{font-size:13pt}
+  #impHoja .infEtapas{grid-template-columns:1fr 1fr}
+  #impHoja .pkpi,#impHoja .infCuadro{box-shadow:none;break-inside:avoid}
+  #impHoja .infClientes{break-inside:auto}
+  #impHoja .infTablaEnv{display:block!important;overflow:visible}
+  #impHoja .infTarjetas{display:none!important}
+  #impHoja .infTabla{font-size:8pt}
+  #impHoja .infTabla th,#impHoja .infTabla td{padding:3px 4px}
+  #impHoja .infTabla thead th{white-space:normal}
+  #impHoja .infTabla tr{break-inside:avoid}
+}
 .infTit{margin:0;font-family:var(--display);font-size:1.25rem;color:var(--sab)}
 .infTit small{display:block;font-family:inherit;font-size:.8rem;font-weight:500;color:var(--muted)}
 /* v2.7.1: pedidos por etapa */
@@ -2340,9 +2367,20 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     per.appendChild(rango);
     box.appendChild(per);
 
+    // Encabezado que solo sale en la hoja impresa.
+    var imp = el("div", "infImpCab");
+    imp.appendChild(el("strong", "", "Sabelotodo · Informe de pedidos"));
+    imp.appendChild(el("span", "emitido", ""));
+    box.appendChild(imp);
+
+    var cabeza = el("div", "infCabeza");
     var tit = el("h3", "infTit", R.titulo); tit.id = "infTit";
     tit.appendChild(el("small", "", "del " + fechaDMA(R.desde) + " al " + fechaDMA(R.hasta)));
-    box.appendChild(tit);
+    cabeza.appendChild(tit);
+    var bi = el("button", "btn sec", "🖨 Imprimir"); bi.type = "button"; bi.id = "infImprimir";
+    bi.addEventListener("click", imprimirInforme);
+    cabeza.appendChild(bi);
+    box.appendChild(cabeza);
 
     var K = el("div", "pkpis"); K.id = "infTotales";
     K.appendChild(pkpi(plata(I.facturado), "Facturado", plural(I.nFacturas, "comprobante", "comprobantes") + " en el período"));
@@ -2359,6 +2397,33 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     box.appendChild(E);
     box.appendChild(saldoClientes(I.clientes));
     lista.appendChild(box);
+  }
+  // Imprimir o guardar PDF: se arma una copia del informe (#impHoja) y el CSS de impresión muestra solo esa copia.
+  // Si los montos están ocultos, se pregunta; se muestran solo para la hoja y después vuelven a ocultarse.
+  function imprimirInforme(){
+    var ocultar = false;
+    if(!verMontos){
+      if(!confirm("Los montos están ocultos y en la hoja saldrían como «$ •••••».\n\nAceptar: imprimir con los montos.\nCancelar: no imprimir.")) return;
+      verMontos = true; ocultar = true; pintarOjos(); render();
+    }
+    var vieja = $("impHoja"); if(vieja) vieja.remove();
+    var hoja = $("informe").cloneNode(true); hoja.id = "impHoja";
+    Array.prototype.forEach.call(hoja.querySelectorAll("[id]"), function(n){ n.removeAttribute("id"); });
+    var ahora = new Date();
+    hoja.querySelector(".emitido").textContent = "Emitido el " + fechaDMA(iso(ahora)) + " a las " +
+      String(ahora.getHours()).padStart(2, "0") + ":" + String(ahora.getMinutes()).padStart(2, "0");
+    document.body.appendChild(hoja);
+    document.body.classList.add("impInf");
+    var listo = false;
+    var fin = function(){
+      if(listo) return; listo = true;
+      window.removeEventListener("afterprint", fin);
+      document.body.classList.remove("impInf");
+      var h = $("impHoja"); if(h) h.remove();
+      if(ocultar){ verMontos = false; pintarOjos(); render(); }
+    };
+    window.addEventListener("afterprint", fin);
+    window.print();
   }
   function plataS(n){ return n < 0 ? "− " + plata(-n) : plata(n); }
   var COLS_CLI = [
