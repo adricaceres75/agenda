@@ -10,9 +10,12 @@
 <link rel="icon" href="icono-192.png">
 <link rel="apple-touch-icon" href="icono-192.png">
 <meta name="apple-mobile-web-app-title" content="Agenda">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@300..700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.8: «💰 Cobro del cliente»: un solo cobro (monto total o %) que se reparte entre varios pedidos del
+/* Agenda v2.9: interfaz nueva. Fuente Lexend (más legible en el celular), sin textos de ayuda en las cajas salvo
+   «Tarea para agendar» y «Buscar», la pestaña «Pedidos» se llama «sabelotodo», y diseño con auroras de fondo,
+   vidrio esmerilado, encabezado que fluye, brillo en botones y entrada suave de tarjetas. La planilla no cambia.
+   Agenda v2.8: «💰 Cobro del cliente»: un solo cobro (monto total o %) que se reparte entre varios pedidos del
    mismo cliente, con la opción de cargar la factura igual (mismo número y mismos montos por producto).
    En la planilla quedan un cobro y una factura por pedido, como siempre: la planilla no cambia.
    Agenda v2.7.4: cada total del informe se compara con el período anterior del mismo largo (antes, diferencia y %).
@@ -46,8 +49,8 @@
   --late:#B42318; --late-bg:#FCE6E2; --today:#8A5A00; --today-bg:#FAEFD3;
   --ok:#11856A; --ok-2:#3FB58F;
   --shadow:0 1px 2px rgba(7,47,58,.08),0 6px 18px rgba(7,47,58,.08);
-  --display:"Oxanium","Exo 2",system-ui,sans-serif;
-  --body:"Exo 2",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --display:"Lexend",system-ui,sans-serif;
+  --body:"Lexend",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
@@ -696,6 +699,103 @@ body.ocultos input.monto:not(:focus){filter:blur(6px)}
 fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
 @media (max-width:640px){ .modo button{padding:6px 4px;font-size:.8rem} }
 
+/* ---------- v2.9: interfaz moderna ---------- */
+/* Fuente Lexend (hecha para leerse fácil, también en el celular). Fondo con auroras suaves y retícula,
+   paneles de vidrio esmerilado, encabezado con degradado que fluye, brillo al pasar por los botones
+   y entrada suave de las tarjetas al abrir. Todo respeta «reducir movimiento». */
+:root{--r:18px;--vidrio:color-mix(in srgb,var(--surface) 72%,transparent);--borde-luz:rgba(255,255,255,.7);--brillo-in:inset 0 1px 0 rgba(255,255,255,.65)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--vidrio:color-mix(in srgb,var(--surface) 70%,transparent);--borde-luz:rgba(134,226,236,.16);--brillo-in:inset 0 1px 0 rgba(134,226,236,.10)} }
+:root[data-theme="dark"]{--vidrio:color-mix(in srgb,var(--surface) 70%,transparent);--borde-luz:rgba(134,226,236,.16);--brillo-in:inset 0 1px 0 rgba(134,226,236,.10)}
+body{background:var(--bg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body::before{content:"";position:fixed;inset:-10vmax;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(40vmax 30vmax at 12% 8%,color-mix(in srgb,var(--accent-2) 26%,transparent),transparent 70%),
+    radial-gradient(36vmax 28vmax at 92% 18%,color-mix(in srgb,var(--sindical) 18%,transparent),transparent 70%),
+    radial-gradient(44vmax 32vmax at 60% 100%,color-mix(in srgb,var(--ok-2) 18%,transparent),transparent 70%),
+    linear-gradient(170deg,var(--bg) 0%,var(--bg2) 100%);
+  animation:aurora 28s ease-in-out infinite alternate}
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(color-mix(in srgb,var(--accent) 10%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--accent) 10%,transparent) 1px,transparent 1px);
+  background-size:36px 36px;mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse at 50% 0%,#000 0%,transparent 75%)}
+@keyframes aurora{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3vmax,-2vmax,0) scale(1.08)}}
+
+/* Encabezado: degradado que fluye, línea de luz y nombre con brillo */
+.hero{border-radius:22px;border:1px solid rgba(255,255,255,.14);
+  background:linear-gradient(120deg,var(--hero-1) 0%,var(--hero-2) 35%,var(--hero-3) 60%,var(--hero-2) 80%,var(--hero-1) 100%);
+  background-size:240% 100%;animation:fluir 16s ease-in-out infinite alternate;
+  box-shadow:0 24px 50px -24px rgba(7,47,58,.65),inset 0 1px 0 rgba(255,255,255,.18)}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,#8BEBF5,#E9FFF8,#8BEBF5,transparent);opacity:.8}
+.hero h1{background:linear-gradient(95deg,#FFFFFF 0%,#C9F6FB 55%,#8BEBF5 100%);-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700;letter-spacing:-.01em}
+.subtitulo{letter-spacing:.14em;text-transform:uppercase;font-size:clamp(.78rem,1.6vw,.92rem);font-weight:500}
+.hero .fecha{letter-spacing:.1em}
+.avance .riel{height:12px;background:rgba(255,255,255,.12);box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+@keyframes fluir{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+
+/* Paneles de vidrio */
+.captura,.kpi,.alertas,.bienvenida,.infPer,.infCuadro,.pkpi,.bandeja,.modo,#buscar{
+  background:var(--vidrio);-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);
+  border-color:var(--borde-luz)}
+.captura,.kpi,.alertas,.bienvenida,.infPer,.infCuadro,.pkpi{box-shadow:var(--brillo-in),var(--shadow)}
+.captura,.kpi,.card,.sep,.alertas,.pkpi,.infCuadro,.infPer,.etapa,.pedCab,.bienvenida,.bandeja{border-radius:var(--r)}
+.captura label{font-weight:600;font-size:1.02rem}
+.captura textarea,.campo input,.campo select,.campo textarea{border-radius:12px}
+.kpi .n{font-weight:700;letter-spacing:-.02em}
+.kpi .l{font-weight:600}
+
+/* Tarjetas: luz arriba, se elevan al pasar */
+.card,.pcard,.tarea,.mini{box-shadow:var(--brillo-in),var(--shadow)}
+.card,.pcard{transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s,border-color .2s}
+.card:hover,.pcard:hover{transform:translateY(-3px);box-shadow:0 0 0 2px var(--glow),0 14px 30px -12px rgba(7,47,58,.35)}
+.card .titulo,.tarea .titulo{font-weight:500;letter-spacing:-.005em}
+.grupo h2,.bandeja h3,.etapa h3,.alertas h2{letter-spacing:.1em}
+.sep{box-shadow:0 14px 30px -16px rgba(7,47,58,.6),inset 0 1px 0 rgba(255,255,255,.15)}
+.sep .t{font-weight:600}
+
+/* Botones con brillo que cruza y respuesta al tocar */
+.btn,.mic{position:relative;overflow:hidden;border-radius:12px}
+.mic{border-radius:50%}
+.btn::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.38) 50%,transparent 75%);transform:translateX(-130%);transition:transform .7s ease}
+.btn:hover:not([disabled])::after{transform:translateX(130%)}
+.btn:active:not([disabled]),.chip:active,.modo button:active,.mini-btn:active,.rapido button:active{transform:scale(.96)}
+.btn{font-weight:600;letter-spacing:.01em}
+
+/* Pestañas y filtros: píldoras con brillo cuando están elegidas */
+.modo{padding:3px;gap:2px;box-shadow:var(--brillo-in),var(--shadow)}
+.modo button{border-radius:999px;transition:background .2s,color .2s,box-shadow .2s}
+.chip,.modo button{font-weight:500;letter-spacing:.01em}
+.chip[aria-pressed="true"],.modo button[aria-pressed="true"]{box-shadow:0 4px 14px var(--glow);font-weight:600}
+.modo button#mPed[aria-pressed="true"]{box-shadow:0 4px 14px rgba(179,38,62,.35)}
+.chip{transition:background .2s,color .2s,border-color .2s,transform .15s}
+.chip:hover{border-color:var(--accent-2);color:var(--accent)}
+.chip[aria-pressed="true"]:hover{color:var(--accent-ink)}
+
+/* Ventanas: vidrio y fondo desenfocado */
+dialog{background:color-mix(in srgb,var(--surface) 94%,transparent);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-color:var(--borde-luz);
+  box-shadow:0 30px 80px -20px rgba(0,0,0,.5),var(--brillo-in);border-radius:22px}
+dialog::backdrop{background:rgba(4,22,28,.5);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+dialog[open]{animation:abrir .28s cubic-bezier(.2,.9,.3,1.2)}
+@keyframes abrir{0%{opacity:0;transform:translateY(14px) scale(.97)}100%{opacity:1;transform:none}}
+.pedCab{border-radius:var(--r);border:1px solid rgba(255,255,255,.14);box-shadow:0 20px 40px -22px rgba(94,15,30,.7),inset 0 1px 0 rgba(255,255,255,.18)}
+
+/* Entrada suave de las tarjetas al abrir el tablero */
+html.arranque .crono > *,html.arranque .kpi,html.arranque .etapa,html.arranque .grupo{animation:aparecer .55s cubic-bezier(.2,.8,.2,1) both}
+html.arranque .kpi:nth-child(2),html.arranque .crono > :nth-child(2){animation-delay:.04s}
+html.arranque .kpi:nth-child(3),html.arranque .crono > :nth-child(3){animation-delay:.08s}
+html.arranque .kpi:nth-child(4),html.arranque .crono > :nth-child(4){animation-delay:.12s}
+html.arranque .kpi:nth-child(5),html.arranque .crono > :nth-child(5){animation-delay:.16s}
+html.arranque .crono > :nth-child(n+6){animation-delay:.2s}
+@keyframes aparecer{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:none}}
+
+::selection{background:var(--accent-2);color:#fff}
+*{scrollbar-color:color-mix(in srgb,var(--accent-2) 55%,transparent) transparent}
+@media (max-width:640px){
+  .hero{border-radius:18px}
+  .card .titulo{font-size:1.02rem}
+}
+@media print{ body::before,body::after{display:none} }
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -755,7 +855,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
       <button type="button" id="mCol" aria-pressed="false">Columnas</button>
       <button type="button" id="mLis" aria-pressed="false">Lista</button>
       <button type="button" id="mSem" aria-pressed="false">Semana</button>
-      <button type="button" id="mPed" aria-pressed="false">Pedidos</button>
+      <button type="button" id="mPed" aria-pressed="false">sabelotodo</button>
     </div>
     <div class="modo" id="cortes" role="group" aria-label="Separar la cronología por">
       <button type="button" data-corte="semana" aria-pressed="true">Por semana</button>
@@ -766,18 +866,18 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
 
   <section class="pedCab" id="pedCab" hidden>
     <div class="arriba">
-      <h2>Pedidos Sabelotodo</h2>
+      <h2>Pedidos sabelotodo</h2>
       <div class="der"><button type="button" class="ojo" id="pedOjo"></button><button class="btn sec" type="button" id="pedCob">💰 Cobro del cliente</button><button class="btn sec" type="button" id="pedInf">📊 Informe</button><button class="btn" type="button" id="pedNuevo">+ Nuevo pedido</button></div>
     </div>
     <div class="rapidoBox" id="rapBox">
       <label><span>Pedido rápido: dictalo o escribilo y completalo después</span>
-        <textarea id="rapTxt" placeholder="Ej.: 100 libretas A6 para la Escuela 5, entrega el 20/11"></textarea></label>
+        <textarea id="rapTxt"></textarea></label>
       <button class="mic" id="rapMic" type="button" aria-label="Dictar un pedido rápido" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8.5 21h7"/></svg></button>
       <button class="btn sec" type="button" id="rapGuardar">Guardar rápido</button>
     </div>
     <div id="rapEstado" role="status" aria-live="polite"></div>
   </section>
-  <section class="alertas" id="alertas" hidden aria-label="Alertas de Sabelotodo"></section>
+  <section class="alertas" id="alertas" hidden aria-label="Alertas de sabelotodo"></section>
 
   <section class="bienvenida" id="bienvenida" hidden>
     <h2>Conectá este dispositivo con tu planilla</h2>
@@ -837,7 +937,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
   <form id="frmCx">
     <h3>Conexión con la planilla</h3>
     <p>Se guarda solo en este dispositivo. La dirección y la clave están en el registro del programa de la planilla (función «configurar») y en la guía de instalación.</p>
-    <label class="campo"><span>Dirección de la aplicación web</span><input id="cxUrl" type="url" required placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+    <label class="campo"><span>Dirección de la aplicación web</span><input id="cxUrl" type="url" required autocomplete="off"></label>
     <label class="campo"><span>Clave</span><input id="cxClave" required autocomplete="off" spellcheck="false"></label>
     <div id="cxEstado" role="status" aria-live="polite"></div>
     <div class="acciones">
@@ -859,8 +959,8 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     <div id="pRapidoAviso" class="avisoRapido" hidden>Pedido cargado rápido: completá los datos que faltan y tocá Guardar.</div>
     <fieldset class="bloque"><legend>Datos</legend>
       <div class="fila">
-        <label class="campo"><span>Cliente</span><input id="pCliente" list="dlClientes" maxlength="120" autocomplete="off" placeholder="Elegí de la lista o escribí uno nuevo"></label>
-        <label class="campo chico"><span>CUIT</span><input id="pCuit" maxlength="20" inputmode="numeric" placeholder="opcional"></label>
+        <label class="campo"><span>Cliente</span><input id="pCliente" list="dlClientes" maxlength="120" autocomplete="off"></label>
+        <label class="campo chico"><span>CUIT</span><input id="pCuit" maxlength="20" inputmode="numeric"></label>
       </div>
       <label class="campo"><span>Producto</span><select id="pProd"></select></label>
       <label class="campo"><span>Detalle (colores, diseño, terminación…)</span><textarea id="pDetalle" rows="2"></textarea></label>
@@ -916,14 +1016,14 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     </div>
     <div class="fila soloFac">
       <label class="campo"><span>Comprobante</span><select id="mComp"><option>Factura C</option><option>Factura B</option><option>Factura A</option><option>Nota de crédito</option><option>Otro</option></select></label>
-      <label class="campo"><span>Número</span><input id="mNumFac" placeholder="00001-00000123" autocomplete="off"></label>
+      <label class="campo"><span>Número</span><input id="mNumFac" autocomplete="off"></label>
     </div>
     <div class="fila soloCob">
       <label class="campo"><span>Concepto</span><select id="mConc"><option>Seña</option><option>Pago parcial</option><option>Saldo / pago total</option></select></label>
       <label class="campo"><span>Medio de pago</span><select id="mMedio"><option>Transferencia</option><option>Efectivo</option><option>Mercado Pago</option><option>Cheque</option><option>Otro</option></select></label>
     </div>
     <div class="fila soloCob">
-      <label class="campo"><span>N.º de recibo</span><input id="mRecibo" placeholder="Vacío = sin recibo" autocomplete="off"></label>
+      <label class="campo"><span>N.º de recibo</span><input id="mRecibo" autocomplete="off"></label>
     </div>
     <label class="campo"><span>Notas</span><input id="mNotas" maxlength="500"></label>
     <div id="mEstado" class="pEstado" role="status" aria-live="polite"></div>
@@ -943,11 +1043,11 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
       <button type="button" class="ojo" id="cOjo"></button>
     </div>
     <p class="ayudaP">Un solo pago que abarca varios pedidos: ponés el total o el porcentaje y se reparte solo.</p>
-    <label class="campo"><span>Cliente</span><input id="cCliente" list="dlClientes" autocomplete="off" placeholder="Ej.: Fer Pilar"></label>
+    <label class="campo"><span>Cliente</span><input id="cCliente" list="dlClientes" autocomplete="off"></label>
     <div id="cLista" class="cobLista"></div>
     <div class="fila">
       <label class="campo"><span>Monto total cobrado</span><input id="cMonto" class="monto" type="number" min="0" step="0.01" inputmode="decimal"></label>
-      <label class="campo chico"><span>o porcentaje</span><input id="cPct" type="number" min="0" max="100" step="1" inputmode="decimal" placeholder="%"></label>
+      <label class="campo chico"><span>o porcentaje</span><input id="cPct" type="number" min="0" max="100" step="1" inputmode="decimal"></label>
     </div>
     <div class="cobPct" id="cPctBotones" role="group" aria-label="Porcentaje rápido">
       <button type="button" data-pct="25" aria-pressed="false">25 %</button>
@@ -961,12 +1061,12 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     </div>
     <div class="fila">
       <label class="campo"><span>Medio de pago</span><select id="cMedio"><option>Transferencia</option><option>Efectivo</option><option>Mercado Pago</option><option>Cheque</option><option>Otro</option></select></label>
-      <label class="campo"><span>N.º de recibo</span><input id="cRecibo" placeholder="Vacío = sin recibo" autocomplete="off"></label>
+      <label class="campo"><span>N.º de recibo</span><input id="cRecibo" autocomplete="off"></label>
     </div>
     <label class="chk"><input type="checkbox" id="cFacturar" checked> Facturar lo mismo (misma factura, mismos montos por producto)</label>
     <div class="fila cobFac" id="cFacBox">
       <label class="campo"><span>Comprobante</span><select id="cComp"><option>Factura C</option><option>Factura B</option><option>Factura A</option><option>Otro</option></select></label>
-      <label class="campo"><span>N.º de factura</span><input id="cNumFac" placeholder="00001-00000123" autocomplete="off"></label>
+      <label class="campo"><span>N.º de factura</span><input id="cNumFac" autocomplete="off"></label>
     </div>
     <label class="campo"><span>Notas</span><input id="cNotas" maxlength="400"></label>
     <div id="cEstado" class="pEstado" role="status" aria-live="polite"></div>
@@ -982,6 +1082,15 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
 <div class="aviso" id="aviso" role="status"><span id="avisoTxt"></span><button type="button" id="avisoBtn">Deshacer</button></div>
 
 <script>
+/* v2.9: entrada suave de las tarjetas al abrir y al cambiar de pestaña (solo por un momento, así la
+   actualización de cada minuto no las hace saltar) */
+(function(){
+  var raiz = document.documentElement, t = null;
+  function animar(ms){ raiz.classList.remove("arranque"); void raiz.offsetWidth; raiz.classList.add("arranque");
+    clearTimeout(t); t = setTimeout(function(){ raiz.classList.remove("arranque"); }, ms); }
+  animar(2600);
+  document.addEventListener("click", function(e){ if(e.target.closest && e.target.closest(".modo button")) setTimeout(function(){ animar(900); }, 0); });
+})();
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var AREAS = {sindical:"Sindical", laboral:"sabelotodo", personal:"Personal"};
@@ -2081,7 +2190,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     var mostrar = lista.length && (modo === "pedidos" || !filtro || filtro === "laboral");
     box.hidden = !mostrar; box.textContent = "";
     if(!mostrar) return;
-    var h2 = el("h2", "", "Alertas Sabelotodo · "); h2.appendChild(el("span", "cnt", String(lista.length)));
+    var h2 = el("h2", "", "Alertas sabelotodo · "); h2.appendChild(el("span", "cnt", String(lista.length)));
     box.appendChild(h2);
     var tope = alertasTodas ? lista.length : 4;
     lista.slice(0, tope).forEach(function(a){
@@ -2245,7 +2354,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     if(!pedidos.length){
       var v0 = el("div", "pedVacio");
       v0.appendChild(el("strong", "", "Todavía no hay pedidos. "));
-      v0.appendChild(document.createTextNode("Tocá «+ Nuevo pedido», dictá uno rápido arriba, o pasá a pedido una tarea de Sabelotodo de la Cronología (botón «→ Pedido»)."));
+      v0.appendChild(document.createTextNode("Tocá «+ Nuevo pedido», dictá uno rápido arriba, o pasá a pedido una tarea de sabelotodo de la Cronología (botón «→ Pedido»)."));
       lista.appendChild(v0); return;
     }
     if(busca && !vis.length){ lista.appendChild(el("div", "pedVacio", "Ningún pedido coincide con «" + $("buscar").value + "».")); return; }
@@ -2440,7 +2549,7 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
 
     // Encabezado que solo sale en la hoja impresa.
     var imp = el("div", "infImpCab");
-    imp.appendChild(el("strong", "", "Sabelotodo · Informe de pedidos"));
+    imp.appendChild(el("strong", "", "sabelotodo · Informe de pedidos"));
     imp.appendChild(el("span", "emitido", ""));
     box.appendChild(imp);
 

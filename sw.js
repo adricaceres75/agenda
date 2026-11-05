@@ -1,6 +1,6 @@
 // Guarda la app en el celular para que abra rápido aunque la señal sea mala.
 // Los envíos a la agenda nunca pasan por acá: siempre van directo a internet.
-const CACHE = "agenda-v2.8";
+const CACHE = "agenda-v2.9";
 const ARCHIVOS = ["./", "./index.html", "./manifest.webmanifest", "./icono-192.png", "./icono-512.png", "./icono-maskable-192.png", "./icono-maskable-512.png"];
 
 self.addEventListener("install", (e) => {
