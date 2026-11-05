@@ -12,7 +12,8 @@
 <meta name="apple-mobile-web-app-title" content="Agenda">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@300..700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.9: interfaz nueva. Fuente Lexend (más legible en el celular), sin textos de ayuda en las cajas salvo
+/* Agenda v2.9.1: las alertas de sabelotodo se ven solo en su pestaña (la Cronología queda libre para las tareas).
+   Agenda v2.9: interfaz nueva. Fuente Lexend (más legible en el celular), sin textos de ayuda en las cajas salvo
    «Tarea para agendar» y «Buscar», la pestaña «Pedidos» se llama «sabelotodo», y diseño con auroras de fondo,
    vidrio esmerilado, encabezado que fluye, brillo en botones y entrada suave de tarjetas. La planilla no cambia.
    Agenda v2.8: «💰 Cobro del cliente»: un solo cobro (monto total o %) que se reparte entre varios pedidos del
@@ -2187,7 +2188,7 @@ html.arranque .crono > :nth-child(n+6){animation-delay:.2s}
   var alertasTodas = false;
   function renderAlertas(){
     var box = $("alertas"), lista = sabelotodoOk ? todasLasAlertas() : [];
-    var mostrar = lista.length && (modo === "pedidos" || !filtro || filtro === "laboral");
+    var mostrar = lista.length && modo === "pedidos"; // v2.9.1: solo en la pestaña sabelotodo
     box.hidden = !mostrar; box.textContent = "";
     if(!mostrar) return;
     var h2 = el("h2", "", "Alertas sabelotodo · "); h2.appendChild(el("span", "cnt", String(lista.length)));
