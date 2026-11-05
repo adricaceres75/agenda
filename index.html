@@ -12,7 +12,9 @@
 <meta name="apple-mobile-web-app-title" content="Agenda">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.7.1: el informe suma los pedidos por etapa (tomados en el período según su etapa de hoy,
+/* Agenda v2.7.2: el informe suma el saldo por cliente (lo que debe hoy de los pedidos del período, facturado y
+   cobrado en el período, y lo que debía al cierre). Tabla en PC, tarjetas en celular.
+   Agenda v2.7.1: el informe suma los pedidos por etapa (tomados en el período según su etapa de hoy,
    y movimiento de etapas en el período).
    Agenda v2.7: informe por período de los pedidos (botón «📊 Informe» en Pedidos): elegir mes, varios meses o año,
    y ver facturado, cobrado, vendido y lo que falta cobrar. Se calcula en el tablero; la planilla no cambia.
@@ -527,6 +529,32 @@ dialog h3{color:var(--accent)}
 .infFila.arch{color:var(--muted)}
 .infFila.arch .barra span{background:var(--muted)}
 .infFila.cero{opacity:.55}
+/* v2.7.2: saldo por cliente (tabla en PC, tarjetas en celular) */
+.infTablaEnv{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.infTabla{width:100%;border-collapse:collapse;font-size:.86rem}
+.infTabla th,.infTabla td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.infTabla thead th{font-family:var(--display);font-weight:600;font-size:.78rem;color:var(--muted);vertical-align:bottom}
+.infTabla thead th.infGrupo{text-align:center;color:var(--sab);letter-spacing:.06em;text-transform:uppercase;font-size:.72rem;border-bottom:2px solid var(--sab-2)}
+.infTabla .nom{text-align:left;white-space:normal;min-width:9em;font-weight:600}
+.infTabla thead th:first-child{text-align:left}
+.infTabla td.v{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.infTabla .g1{background:color-mix(in srgb,var(--sunk) 45%,transparent)}
+.infTabla td.cero{color:var(--muted);opacity:.6}
+.infTabla td.debe{color:var(--sab);font-weight:700}
+.infTabla tfoot th,.infTabla tfoot td{border-top:2px solid var(--line);border-bottom:0;font-weight:700}
+.infTarjetas{display:none;flex-direction:column;gap:10px}
+.infCli{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg);display:flex;flex-direction:column;gap:8px}
+.infCli.total{border-width:2px;border-color:var(--sab-2)}
+.infCli .cab{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.infCli .cab strong{font-family:var(--display)}
+.infCli .debe{font-family:var(--mono);font-weight:700;color:var(--sab)}
+.infCli .debe.cero{color:var(--muted);font-family:inherit;font-weight:500;font-size:.85rem}
+.infCli .bl{display:flex;flex-direction:column;gap:2px}
+.infCli .bl .t{font-family:var(--display);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.infCli .f{display:flex;justify-content:space-between;gap:8px;font-size:.86rem}
+.infCli .f .v{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.infCli .f.cero{opacity:.55}
+@media (max-width:760px){ .infTablaEnv{display:none} .infTarjetas{display:flex} }
 .infFila[data-etapa="rechazado"]{border-top:1px dashed var(--line);padding-top:6px;margin-top:2px}
 
 /* Tablero por etapas */
@@ -2207,7 +2235,51 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
       });
       if(movido) r.nMovidos++;
     });
+    r.clientes = calcClientes(desde, hasta, enP);
     return r;
+  }
+  // Saldo por cliente, con las tres miradas acordadas:
+  //  - pedidos del período, hoy: vendido, cobrado hasta hoy y lo que falta;
+  //  - movimientos del período: facturado, cobrado y la diferencia;
+  //  - al cierre: lo que debía el último día (pedidos aprobados hasta esa fecha menos cobros hasta esa fecha).
+  function calcClientes(desde, hasta, enP){
+    var C = {}, orden = [];
+    var de = function(p){
+      var k = p.clienteId ? "id:" + p.clienteId : "n:" + sinAcentos(String(p.cliente || "").trim());
+      if(!C[k]){
+        var reg = p.clienteId ? clientes.filter(function(c){ return c.id === p.clienteId; })[0] : null;
+        C[k] = {nombre: (reg && reg.nombre) || String(p.cliente || "").trim() || "Sin cliente",
+          vendido: 0, cobradoHoy: 0, falta: 0, facturado: 0, cobrado: 0, dif: 0, cierre: 0};
+        orden.push(k);
+      }
+      return C[k];
+    };
+    pedidos.forEach(function(p){
+      var ie = idxEtapa(p.etapa); if(ie < I_APROBADO) return;
+      var t = totales(p);
+      if(enP(p.fechaPedido)){ var c = de(p); c.vendido += t.total; c.cobradoHoy += t.cobrado; c.falta += t.saldo; }
+      var fa = fechaEtapa(p, "aprobado") || p.fechaPedido;
+      if(fa && fa <= hasta){
+        var cob = 0; movsDe(p.id).forEach(function(m){ if(m.tipo === "cobro" && m.fecha && m.fecha <= hasta) cob += +m.monto || 0; });
+        var debe = Math.max(0, t.total - cob);
+        if(debe >= 1) de(p).cierre += debe;
+      }
+    });
+    movs.forEach(function(m){
+      if(!enP(m.fecha)) return;
+      var p = pedPorId(m.pedido); if(!p) return;
+      var c = de(p), v = +m.monto || 0;
+      if(m.tipo === "factura") c.facturado += m.comprobante === "Nota de crédito" ? -v : v;
+      else if(m.tipo === "cobro") c.cobrado += v;
+    });
+    var L = orden.map(function(k){
+      var c = C[k];
+      ["vendido", "cobradoHoy", "falta", "facturado", "cobrado", "cierre"].forEach(function(x){ c[x] = redondo(c[x]); });
+      c.dif = redondo(c.facturado - c.cobrado);
+      return c;
+    }).filter(function(c){ return c.vendido || c.facturado || c.cobrado || c.cierre; });
+    L.sort(function(a, b){ return b.falta - a.falta || b.cierre - a.cierre || a.nombre.localeCompare(b.nombre, "es"); });
+    return L;
   }
   function claveEtapas(){ return ETAPAS.map(function(E){ return E.k; }).concat(Object.keys(ARCHIVO)); }
   function cuadroEtapas(id, titulo, sub, cuentas){
@@ -2285,7 +2357,66 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     E.appendChild(cuadroEtapas("infMovimiento", "Movimiento de etapas en el período",
       plural(I.nMovidos, "pedido cambió", "pedidos cambiaron") + " de etapa en el período, aunque se hayan tomado antes", I.movimiento));
     box.appendChild(E);
+    box.appendChild(saldoClientes(I.clientes));
     lista.appendChild(box);
+  }
+  function plataS(n){ return n < 0 ? "− " + plata(-n) : plata(n); }
+  var COLS_CLI = [
+    {k: "vendido", t: "Vendido", g: 0}, {k: "cobradoHoy", t: "Cobrado hasta hoy", g: 0}, {k: "falta", t: "Falta cobrar", g: 0},
+    {k: "facturado", t: "Facturado", g: 1}, {k: "cobrado", t: "Cobrado", g: 1}, {k: "dif", t: "Diferencia", g: 1},
+    {k: "cierre", t: "Debía al cierre", g: 2}
+  ];
+  var GRUPOS_CLI = ["Pedidos del período, hoy", "Movimientos del período", "Al cierre"];
+  // En PC una tabla con los tres bloques; en celular, una tarjeta por cliente (el CSS muestra una u otra).
+  function saldoClientes(L){
+    var S = el("section", "infCuadro infClientes"); S.id = "infClientes";
+    S.appendChild(el("h4", "", "Saldo por cliente"));
+    if(!L.length){ S.appendChild(el("p", "sub", "Ningún cliente con ventas, facturas, cobros o deuda en el período.")); return S; }
+    S.appendChild(el("p", "sub", "Ordenado por lo que falta cobrar hoy. «Diferencia» = facturado − cobrado en el período."));
+    var tot = {nombre: "Total"}; COLS_CLI.forEach(function(c){ tot[c.k] = redondo(L.reduce(function(s, x){ return s + x[c.k]; }, 0)); });
+
+    var envol = el("div", "infTablaEnv"), T = el("table", "infTabla");
+    var th = el("thead"), r1 = el("tr"), r2 = el("tr");
+    var c0 = el("th", "", "Cliente"); c0.rowSpan = 2; c0.scope = "col"; r1.appendChild(c0);
+    GRUPOS_CLI.forEach(function(g, i){
+      var n = COLS_CLI.filter(function(c){ return c.g === i; }).length;
+      var h = el("th", "infGrupo g" + i, g); h.colSpan = n; h.scope = "colgroup"; r1.appendChild(h);
+    });
+    COLS_CLI.forEach(function(c){ var h = el("th", "g" + c.g, c.t); h.scope = "col"; r2.appendChild(h); });
+    th.appendChild(r1); th.appendChild(r2); T.appendChild(th);
+    var tb = el("tbody");
+    var fila = function(x, cls){
+      var tr = el("tr", cls || ""); tr.dataset.cliente = x.nombre;
+      var n = el(cls ? "th" : "td", "nom", x.nombre); if(cls) n.scope = "row"; tr.appendChild(n);
+      COLS_CLI.forEach(function(c){
+        var td = el("td", "v g" + c.g + (c.k === "falta" && x.falta >= 1 ? " debe" : "") + (x[c.k] ? "" : " cero"), plataS(x[c.k]));
+        td.dataset.col = c.k; tr.appendChild(td);
+      });
+      return tr;
+    };
+    L.forEach(function(x){ tb.appendChild(fila(x)); });
+    T.appendChild(tb);
+    var tf = el("tfoot"); tf.appendChild(fila(tot, "total")); T.appendChild(tf);
+    envol.appendChild(T); S.appendChild(envol);
+
+    var K = el("div", "infTarjetas");
+    L.concat([tot]).forEach(function(x, i){
+      var c = el("div", "infCli" + (i === L.length ? " total" : ""));
+      var cab = el("div", "cab"); cab.appendChild(el("strong", "", x.nombre));
+      var d = el("span", "debe" + (x.falta >= 1 ? "" : " cero"), x.falta >= 1 ? "debe " + plata(x.falta) : "nada pendiente");
+      cab.appendChild(d); c.appendChild(cab);
+      GRUPOS_CLI.forEach(function(g, gi){
+        var b = el("div", "bl g" + gi); b.appendChild(el("span", "t", g));
+        COLS_CLI.filter(function(cc){ return cc.g === gi; }).forEach(function(cc){
+          var f = el("div", "f" + (x[cc.k] ? "" : " cero")); f.appendChild(el("span", "", cc.t)); f.appendChild(el("span", "v", plataS(x[cc.k])));
+          b.appendChild(f);
+        });
+        c.appendChild(b);
+      });
+      K.appendChild(c);
+    });
+    S.appendChild(K);
+    return S;
   }
   function pintarBotonInforme(){
     var b = $("pedInf"); if(!b) return;
