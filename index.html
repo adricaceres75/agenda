@@ -12,7 +12,9 @@
 <meta name="apple-mobile-web-app-title" content="Agenda">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.7: informe por período de los pedidos (botón «📊 Informe» en Pedidos): elegir mes, varios meses o año,
+/* Agenda v2.7.1: el informe suma los pedidos por etapa (tomados en el período según su etapa de hoy,
+   y movimiento de etapas en el período).
+   Agenda v2.7: informe por período de los pedidos (botón «📊 Informe» en Pedidos): elegir mes, varios meses o año,
    y ver facturado, cobrado, vendido y lo que falta cobrar. Se calcula en el tablero; la planilla no cambia.
    Agenda v2.6: pedidos de Sabelotodo. Pantalla «Pedidos» con una columna por etapa, ficha de cada pedido
    (catálogo con escalas de precio, descuento o precio a mano, etapas con fecha, facturas y cobros), alertas
@@ -512,6 +514,20 @@ dialog h3{color:var(--accent)}
 .infRango select:focus{outline:none;border-color:var(--accent-2);box-shadow:0 0 0 3px var(--glow)}
 .infTit{margin:0;font-family:var(--display);font-size:1.25rem;color:var(--sab)}
 .infTit small{display:block;font-family:inherit;font-size:.8rem;font-weight:500;color:var(--muted)}
+/* v2.7.1: pedidos por etapa */
+.infEtapas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;align-items:start}
+.infCuadro{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;min-width:0}
+.infCuadro h4{margin:0;font-family:var(--display);font-size:1rem;color:var(--sab)}
+.infCuadro .sub{margin:0 0 4px;font-size:.8rem;color:var(--muted)}
+.infFila{display:grid;grid-template-columns:minmax(0,11em) 1fr 2.5em;gap:8px;align-items:center;font-size:.88rem}
+.infFila .e{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.infFila .barra{height:10px;border-radius:999px;background:var(--sunk);overflow:hidden}
+.infFila .barra span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--sab-2),var(--sab))}
+.infFila .c{font-family:var(--mono);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.infFila.arch{color:var(--muted)}
+.infFila.arch .barra span{background:var(--muted)}
+.infFila.cero{opacity:.55}
+.infFila[data-etapa="rechazado"]{border-top:1px dashed var(--line);padding-top:6px;margin-top:2px}
 
 /* Tablero por etapas */
 .etapas{display:flex;flex-direction:column;gap:10px}
@@ -2179,7 +2195,34 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
       if(t.saldo >= 1){ r.faltaCobrar += t.saldo; r.nFalta++; }
     });
     ["facturado", "cobrado", "vendido", "faltaCobrar"].forEach(function(k){ r[k] = redondo(r[k]); });
+    // Pedidos por etapa: (a) tomados en el período, según su etapa de hoy;
+    // (b) cuántos llegaron a cada etapa dentro del período (por el historial; cada pedido una vez por etapa).
+    r.tomados = {}; r.nTomados = 0; r.movimiento = {}; r.nMovidos = 0;
+    claveEtapas().forEach(function(k){ r.tomados[k] = 0; r.movimiento[k] = 0; });
+    pedidos.forEach(function(p){
+      if(enP(p.fechaPedido) && p.etapa in r.tomados){ r.tomados[p.etapa]++; r.nTomados++; }
+      var vistas = {}, movido = false;
+      (p.historial || []).forEach(function(x){
+        if(enP(x.f) && x.e in r.movimiento && !vistas[x.e]){ vistas[x.e] = true; r.movimiento[x.e]++; movido = true; }
+      });
+      if(movido) r.nMovidos++;
+    });
     return r;
+  }
+  function claveEtapas(){ return ETAPAS.map(function(E){ return E.k; }).concat(Object.keys(ARCHIVO)); }
+  function cuadroEtapas(id, titulo, sub, cuentas){
+    var c = el("section", "infCuadro"); c.id = id;
+    c.appendChild(el("h4", "", titulo)); c.appendChild(el("p", "sub", sub));
+    var max = 0; claveEtapas().forEach(function(k){ if(cuentas[k] > max) max = cuentas[k]; });
+    claveEtapas().forEach(function(k){
+      var f = el("div", "infFila" + (ARCHIVO[k] ? " arch" : "") + (cuentas[k] ? "" : " cero")); f.dataset.etapa = k;
+      f.appendChild(el("span", "e", nombreEtapa(k)));
+      var b = el("span", "barra"), r = el("span"); r.style.width = (max ? Math.round(cuentas[k] / max * 100) : 0) + "%";
+      b.appendChild(r); f.appendChild(b);
+      f.appendChild(el("span", "c", String(cuentas[k])));
+      c.appendChild(f);
+    });
+    return c;
   }
   function plural(n, uno, varios){ return n + " " + (n === 1 ? uno : varios); }
   function fechaDMA(s){ return s.slice(8, 10) + "/" + s.slice(5, 7) + "/" + s.slice(0, 4); }
@@ -2235,6 +2278,13 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     K.appendChild(pkpi(plata(I.vendido), "Vendido", plural(I.nVendidos, "pedido tomado", "pedidos tomados") + " (desde aprobado)"));
     K.appendChild(pkpi(plata(I.faltaCobrar), "Falta cobrar hoy", I.nFalta ? "de " + plural(I.nFalta, "pedido vendido", "pedidos vendidos") : "todo lo vendido está cobrado"));
     box.appendChild(K);
+
+    var E = el("div", "infEtapas");
+    E.appendChild(cuadroEtapas("infTomados", "Pedidos tomados, según su etapa de hoy",
+      plural(I.nTomados, "pedido tomado", "pedidos tomados") + " en el período", I.tomados));
+    E.appendChild(cuadroEtapas("infMovimiento", "Movimiento de etapas en el período",
+      plural(I.nMovidos, "pedido cambió", "pedidos cambiaron") + " de etapa en el período, aunque se hayan tomado antes", I.movimiento));
+    box.appendChild(E);
     lista.appendChild(box);
   }
   function pintarBotonInforme(){
