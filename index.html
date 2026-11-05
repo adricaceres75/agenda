@@ -12,7 +12,8 @@
 <meta name="apple-mobile-web-app-title" content="Agenda">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;600;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
-/* Agenda v2.7.3: botón «🖨 Imprimir» en el informe: hoja limpia (o PDF) con encabezado, período y fecha de emisión.
+/* Agenda v2.7.4: cada total del informe se compara con el período anterior del mismo largo (antes, diferencia y %).
+   Agenda v2.7.3: botón «🖨 Imprimir» en el informe: hoja limpia (o PDF) con encabezado, período y fecha de emisión.
    Agenda v2.7.2: el informe suma el saldo por cliente (lo que debe hoy de los pedidos del período, facturado y
    cobrado en el período, y lo que debía al cierre). Tabla en PC, tarjetas en celular.
    Agenda v2.7.1: el informe suma los pedidos por etapa (tomados en el período según su etapa de hoy,
@@ -518,6 +519,12 @@ dialog h3{color:var(--accent)}
 .infCabeza{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
 .infCabeza .btn.sec{background:var(--surface);color:var(--sab);border:1px solid var(--line);box-shadow:none}
 .infImpCab,#impHoja{display:none}
+/* v2.7.4: comparación con el período anterior */
+.infComp{margin:-6px 0 0;font-size:.82rem;color:var(--muted)}
+.pkpi .cmp{margin-top:4px;padding-top:4px;border-top:1px dashed var(--line);font-family:var(--mono);font-size:.76rem;color:var(--muted)}
+.pkpi .cmp span{white-space:nowrap}
+.pkpi .cmp.mejor{color:var(--accent)}
+.pkpi .cmp.peor{color:var(--sab)}
 /* v2.7.3: hoja impresa (o PDF). Solo se imprime la copia del informe, en colores claros aunque el tablero esté oscuro. */
 @media print{
   @page{size:A4;margin:12mm}
@@ -2382,11 +2389,21 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     cabeza.appendChild(bi);
     box.appendChild(cabeza);
 
+    // Comparación con el período anterior del mismo largo (abril → marzo; ene–mar → oct–dic; un año → el anterior).
+    var RP = periodoAnterior(R), IP = calcInforme(RP.desde, RP.hasta);
+    var comp = el("p", "infComp", "Comparado con " + RP.titulo.charAt(0).toLowerCase() + RP.titulo.slice(1) +
+      " (del " + fechaDMA(RP.desde) + " al " + fechaDMA(RP.hasta) + ")"); comp.id = "infComp";
+    box.appendChild(comp);
+
     var K = el("div", "pkpis"); K.id = "infTotales";
-    K.appendChild(pkpi(plata(I.facturado), "Facturado", plural(I.nFacturas, "comprobante", "comprobantes") + " en el período"));
-    K.appendChild(pkpi(plata(I.cobrado), "Cobrado", plural(I.nCobros, "cobro", "cobros") + " en el período"));
-    K.appendChild(pkpi(plata(I.vendido), "Vendido", plural(I.nVendidos, "pedido tomado", "pedidos tomados") + " (desde aprobado)"));
-    K.appendChild(pkpi(plata(I.faltaCobrar), "Falta cobrar hoy", I.nFalta ? "de " + plural(I.nFalta, "pedido vendido", "pedidos vendidos") : "todo lo vendido está cobrado"));
+    var tarjeta = function(k, l, s, menosEsMejor){
+      var d = pkpi(plata(I[k]), l, s); d.dataset.k = k;
+      d.appendChild(comparacion(I[k], IP[k], menosEsMejor)); return d;
+    };
+    K.appendChild(tarjeta("facturado", "Facturado", plural(I.nFacturas, "comprobante", "comprobantes") + " en el período"));
+    K.appendChild(tarjeta("cobrado", "Cobrado", plural(I.nCobros, "cobro", "cobros") + " en el período"));
+    K.appendChild(tarjeta("vendido", "Vendido", plural(I.nVendidos, "pedido tomado", "pedidos tomados") + " (desde aprobado)"));
+    K.appendChild(tarjeta("faltaCobrar", "Falta cobrar hoy", I.nFalta ? "de " + plural(I.nFalta, "pedido vendido", "pedidos vendidos") : "todo lo vendido está cobrado", true));
     box.appendChild(K);
 
     var E = el("div", "infEtapas");
@@ -2424,6 +2441,25 @@ fieldset.bloque > .campo,fieldset.bloque > .fila{flex:0 0 auto}
     };
     window.addEventListener("afterprint", fin);
     window.print();
+  }
+  // Período anterior con la misma cantidad de meses, justo antes del elegido.
+  function periodoAnterior(R){
+    var idx = function(k){ return +k.slice(0, 4) * 12 + (+k.slice(5, 7) - 1); };
+    var n = idx(R.hm) - idx(R.dm) + 1, d = idx(R.dm) - n, h = idx(R.dm) - 1;
+    var aK = function(i){ return ym(Math.floor(i / 12), i % 12 + 1); };
+    return rangoPeriodo({tipo: "rango", desde: aK(d), hasta: aK(h)}, hoy());
+  }
+  // Línea «antes $ X · ▲ $ Y (+Z %)». menosEsMejor: en «Falta cobrar», que baje es lo bueno.
+  function comparacion(act, ant, menosEsMejor){
+    var dif = redondo(act - ant), s = el("span", "cmp");
+    s.appendChild(el("span", "", "antes " + plata(ant))); s.appendChild(document.createTextNode(" · "));
+    if(Math.abs(dif) < 1){ s.appendChild(el("span", "", "sin cambios")); s.classList.add("igual"); return s; }
+    var sube = dif > 0;
+    var txt = (sube ? "▲ " : "▼ ") + plata(Math.abs(dif));
+    if(Math.abs(ant) >= 1) txt += " (" + (sube ? "+" : "−") + (verMontos ? Math.round(Math.abs(dif) / Math.abs(ant) * 100).toLocaleString("es-AR") : "••") + " %)";
+    s.appendChild(el("span", "", txt));
+    s.classList.add(sube !== !!menosEsMejor ? "mejor" : "peor");
+    return s;
   }
   function plataS(n){ return n < 0 ? "− " + plata(-n) : plata(n); }
   var COLS_CLI = [
